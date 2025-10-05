@@ -202,7 +202,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
 async def crea_task(
     progetto_id: int = Form(...),
     titolo: str = Form(...),
-    descrizione: str = Form(...),
+    descrizione: str = Form(""),
     stato: str = Form(...),
     parent_id: str = Form(""),
     assegnato_a: str = Form(""),

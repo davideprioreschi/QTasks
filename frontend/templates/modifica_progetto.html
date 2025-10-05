@@ -4,18 +4,63 @@
     <meta charset="UTF-8">
     <title>Modifica progetto - QTasks</title>
     <link rel="stylesheet" href="/static/style.css">
+</head>
 <body>
-    <h1>Modifica progetto</h1>
-    <form method="post" action="/modifica_progetto/{{ progetto_id }}">
-        <input type="text" name="nome" value="{{ nome }}" required><br>
-        <label>Membri del progetto:</label><br>
-        {% for utente in tutti_utenti %}
-            <input type="checkbox" name="membri" value="{{ utente.id }}"
-                {% if utente.id in membri_attuali %}checked{% endif %}>
-            {{ utente.nome }}<br>
-        {% endfor %}
-        <button type="submit">Salva modifiche</button>
-    </form>
-    <a href="/">← Torna alla dashboard</a>
+    <div class="edit-project-container">
+        <!-- Link back to dashboard -->
+        <nav class="back-nav">
+            <a href="/" class="back-link">← Back to dashboard</a>
+        </nav>
+
+        <div class="edit-project-card">
+            <h1 class="project-settings-title">Project Settings</h1>
+            <div class="project-settings-subtitle">
+                Manage your project details and team members
+            </div>
+
+            <form method="post" action="/modifica_progetto/{{ progetto_id }}">
+                <!-- Project Name Section -->
+                <section class="project-name-section">
+                    <label for="nome" class="section-label">Project Name</label>
+                    <input type="text" id="nome" name="nome" value="{{ nome }}" required class="project-name-input">
+                </section>
+
+                <!-- Project Members Section -->
+                <section class="project-members-section">
+                    <h3 class="section-label">Project Members</h3>
+                    <div class="members-list">
+                        {% for utente in tutti_utenti %}
+                        <div class="member-item">
+                            {% if utente.id in membri_attuali %}
+                            <div class="member-avatar">
+                                <!-- Placeholder per avatar utente -->
+                                <span class="member-avatar-text">{{ utente.nome[0]|upper }}</span>
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">{{ utente.nome }}</div>
+                            </div>
+                            <div class="member-actions">
+                                <input type="checkbox" name="membri" value="{{ utente.id }}" checked class="member-checkbox">
+                            </div>
+                            {% else %}
+                            <div class="member-info">
+                                <div class="member-name">{{ utente.nome }}</div>
+                            </div>
+                            <div class="member-actions">
+                                <input type="checkbox" name="membri" value="{{ utente.id }}" class="member-checkbox">
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Save Button -->
+                <div class="save-section">
+                    <button type="submit" class="save-changes-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

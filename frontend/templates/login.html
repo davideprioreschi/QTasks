@@ -6,19 +6,40 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h2>Accedi a QTasks</h2>
-    <form method="post" action="/login">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br>
-
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
-        <p><a href="/register">Non hai un account? Registrati</a></p>
-
-        <button type="submit">Login</button>
-    </form>
-    {% if error %}
-    <p style="color:red;">{{ error }}</p>
-    {% endif %}
+    <div class="login-outer-container">
+        <div class="login-card">
+            <div class="login-logo" style="text-align:center; margin-bottom:1em;">
+                <!-- Placeholder per il logo QTasks. Sostituisci con un'immagine/logo se necessario -->
+                <span style="font-size:2.1em; font-weight:700; color:#25b7ff;">QTasks</span>
+            </div>
+            <h2 style="text-align:center; margin-bottom:0.3em;">Welcome Back</h2>
+            <div style="color:#979ca7; text-align:center; margin-bottom:1.6em;">Sign in to continue</div>
+            
+            <form method="post" action="/login">
+                <div class="form-group">
+                    <label for="email">Username</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5em;">
+                    <div></div>
+                    <a href="#" class="forgot-link">Forgot Password?</a>
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+            {% if error %}
+            <div class="login-error" style="color:#fa6464; text-align:center; margin-top:1em;">
+                {{ error }}
+            </div>
+            {% endif %}
+            <div class="login-footer" style="text-align:center; margin-top:1.8em; color:#8ca1b4;">
+                Don't have an account?
+                <a href="/register" class="register-link">Register</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

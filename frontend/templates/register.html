@@ -7,25 +7,48 @@
     <link href="https://fonts.googleapis.com/css?family=Inter:400,600,700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h2>Registrati su QTasks</h2>
-    <form method="post" action="/register">
-        <label for="nome">Nome:</label>
-        <input type="text" id="nome" name="nome" required><br>
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br>
-
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
-
-        <button type="submit">Registrati</button>
-    </form>
-    <p><a href="/login">Hai già un account? Accedi</a></p>
-    {% if error %}
-    <p style="color:red;">{{ error }}</p>
-    {% endif %}
-    {% if success %}
-    <p style="color:green;">{{ success }}</p>
-    {% endif %}
+    <div class="register-outer-container">
+        <div class="register-card">
+            <div class="register-logo" style="text-align:center; margin-bottom:1em;">
+                <!-- Logo QTasks -->
+                <span style="font-size:2.1em; font-weight:700; color:#25b7ff;">QTasks</span>
+            </div>
+            <h2 style="text-align:center; margin-bottom:0.2em;">Create your account to start managing tasks.</h2>
+            
+            <form method="post" action="/register">
+                <div class="form-group">
+                    <label for="nome">Username</label>
+                    <input type="text" id="nome" name="nome" placeholder="Username" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Password" required>
+                </div>
+                <div class="form-group">
+                    <label for="password2">Confirm Password</label>
+                    <input type="password" id="password2" name="password2" placeholder="Confirm Password" required>
+                </div>
+                <button type="submit" class="register-btn">Register</button>
+            </form>
+            {% if error %}
+            <div class="register-error" style="color:#fa6464; text-align:center; margin-top:1em;">
+                {{ error }}
+            </div>
+            {% endif %}
+            {% if success %}
+            <div class="register-success" style="color:#38ef7d; text-align:center; margin-top:1em;">
+                {{ success }}
+            </div>
+            {% endif %}
+            <div class="register-footer" style="text-align:center; margin-top:1.7em; color:#8ca1b4;">
+                Already have an account?
+                <a href="/login" class="login-link">Login</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
