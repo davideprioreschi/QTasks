@@ -7,61 +7,100 @@
 </head>
 <body>
     {% if utente %}
-        <h1>Benvenuto, {{ utente.nome }}!</h1>
-        <p>Ruolo: <b>{{ utente.ruolo }}</b></p>
-
-        <h2>Crea un nuovo progetto</h2>
-        <form method="post" action="/crea_progetto">
-            <input type="text" name="nome_progetto" placeholder="Nome progetto" required>
-            <button type="submit">Crea</button>
-        </form>
-
-        <h2>I tuoi progetti:</h2>
-        <ul>
-            {% for progetto in progetti %}
-            <li>
-                <a href="/progetto/{{ progetto.id }}">{{ progetto.nome }}</a>
-                <form method="post" action="/elimina_progetto" style="display:inline;">
-                    <input type="hidden" name="progetto_id" value="{{ progetto.id }}">
-                    <button type="submit" onclick="return confirm('Vuoi eliminare questo progetto e tutti i suoi task?');">Elimina</button>
-                </form>
-                <a href="/modifica_progetto/{{ progetto.id }}">Modifica</a>
-            </li>
-            {% else %}
-            <li>Nessun progetto trovato</li>
-            {% endfor %}
-        </ul>
-        <a href="/logout">Logout</a>
-    {% else %}
-        <div class="welcome-container">
-            <nav class="welcome-nav">
-                <div class="nav-logo">
-                    QTasks
-                </div>
-                <div class="nav-actions">
-                    <a href="/login">Login</a>
-                    <a href="/register" class="nav-register">Register</a>
-                </div>
-            </nav>
-            <div class="welcome-card">
-                <div class="welcome-status-icon">
-                    <span style="font-size:2.8em;">✅</span>
-                </div>
-                <h2>QTasks is Installed and Ready to Use</h2>
-                <p>Your local QTasks instance is running correctly.<br>
-                You can now log in or register to start managing your tasks and streamlining your workflow.</p>
-                <div class="welcome-actions">
-                    <a href="/login">Login</a>
-                    <a href="/register" class="welcome-register">Register</a>
-                </div>
+    <div class="dashboard-container">
+        <!-- Barra top -->
+        <nav class="dashboard-nav">
+            <div class="nav-logo">
+                <!-- Sostituisci con logo se vuoi -->
+                <span>QTasks</span>
             </div>
-            <footer class="welcome-footer">
-                <span>© 2024 QTasks. All rights reserved.</span>
-                <span style="float:right;">
-                    <a href="#">Terms</a> | <a href="#">Privacy</a> | <a href="#">Contact</a>
-                </span>
-            </footer>
+            <div class="nav-actions">
+                <!-- Icone notifiche, user -->
+                <a href="/logout" class="nav-logout">Logout</a>
+            </div>
+        </nav>
+
+        <div class="dashboard-content">
+            <h1 class="dashboard-welcome">Welcome back, {{ utente.nome }}!</h1>
+            <div class="dashboard-subtext">
+                Here's a look at your current projects.
+            </div>
+
+            <!-- Crea nuovo progetto -->
+            <section class="create-project-section">
+                <form method="post" action="/crea_progetto" class="create-project-form">
+                    <div class="input-row">
+                        <input type="text" name="nome_progetto" placeholder="Enter new project name..." required>
+                        <button type="submit" class="create-project-btn">Create Project</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Tabella progetti esistenti -->
+            <section class="project-list-section">
+                <h2 class="project-list-title">Existing Projects</h2>
+                <table class="project-list-table">
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th class="actions-col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for progetto in progetti %}
+                        <tr>
+                            <td>
+                                <a href="/progetto/{{ progetto.id }}">{{ progetto.nome }}</a>
+                            </td>
+                            <td class="actions-col">
+                                <a href="/modifica_progetto/{{ progetto.id }}" class="project-modify">Modify</a>
+                                <form method="post" action="/elimina_progetto" style="display:inline;">
+                                    <input type="hidden" name="progetto_id" value="{{ progetto.id }}">
+                                    <button type="submit" class="project-delete" onclick="return confirm('Vuoi eliminare questo progetto e tutti i suoi task?');">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2">Nessun progetto trovato</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
         </div>
+    </div>
+    {% else %}
+    <!-- Welcome screen as before -->
+    <div class="welcome-container">
+        <nav class="welcome-nav">
+            <div class="nav-logo">
+                QTasks
+            </div>
+            <div class="nav-actions">
+                <a href="/login">Login</a>
+                <a href="/register" class="nav-register">Register</a>
+            </div>
+        </nav>
+        <div class="welcome-card">
+            <div class="welcome-status-icon">
+                <span style="font-size:2.8em;">✅</span>
+            </div>
+            <h2>QTasks is Installed and Ready to Use</h2>
+            <p>Your local QTasks instance is running correctly.<br>
+            You can now log in or register to start managing your tasks and streamlining your workflow.</p>
+            <div class="welcome-actions">
+                <a href="/login">Login</a>
+                <a href="/register" class="welcome-register">Register</a>
+            </div>
+        </div>
+        <footer class="welcome-footer">
+            <span>© 2024 QTasks. All rights reserved.</span>
+            <span style="float:right;">
+                <a href="#">Terms</a> | <a href="#">Privacy</a> | <a href="#">Contact</a>
+            </span>
+        </footer>
+    </div>
     {% endif %}
 </body>
 </html>
