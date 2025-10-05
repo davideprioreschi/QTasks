@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica task - QTasks</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Modifica task</h1>
+    <form method="post" action="/modifica_task/{{ task_id }}">
+        <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
+        
+        <label for="titolo">Titolo:</label>
+        <input type="text" name="titolo" value="{{ titolo }}" required><br>
+        
+        <label for="descrizione">Descrizione:</label>
+        <textarea name="descrizione">{{ descrizione }}</textarea><br>
+        
+        <label for="stato">Stato:</label>
+        <select name="stato">
+            <option value="da_fare" {% if stato == "da_fare" %}selected{% endif %}>Da fare</option>
+            <option value="in_corso" {% if stato == "in_corso" %}selected{% endif %}>In corso</option>
+            <option value="completato" {% if stato == "completato" %}selected{% endif %}>Completato</option>
+        </select><br>
+        
+        <label for="assegnato_a">Assegnato a:</label>
+        <select name="assegnato_a">
+            <option value="">Nessuno</option>
+            {% for membro in membri_progetto %}
+                <option value="{{ membro.id }}" {% if assegnato_a == membro.id %}selected{% endif %}>{{ membro.nome }}</option>
+            {% endfor %}
+        </select><br>
+        
+        <label for="scadenza">Scadenza:</label>
+        <input type="date" name="scadenza" value="{{ scadenza }}"><br>
+        
+        <label for="parent_id">Sotto-task di:</label>
+        <select name="parent_id">
+            <option value="">Nessuno (task principale)</option>
+            {% for task in all_tasks %}
+                <option value="{{ task.id }}" {% if parent_id == task.id %}selected{% endif %}>
+                    {{ task.titolo }}
+                </option>
+            {% endfor %}
+        </select><br>
+        
+        <button type="submit">Salva modifiche</button>
+    </form>
+    <a href="/progetto/{{ progetto_id }}">← Torna al progetto</a>
+</body>
+</html>

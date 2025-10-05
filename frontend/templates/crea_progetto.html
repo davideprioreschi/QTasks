@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Crea progetto - QTasks</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Crea nuovo progetto</h1>
+    <form method="post" action="/crea_progetto">
+        <input type="text" name="nome_progetto" placeholder="Nome progetto" required><br>
+        <label>Associa membri al progetto:</label><br>
+        {% for utente in tutti_utenti %}
+            <input type="checkbox" name="membri" value="{{ utente.id }}">{{ utente.nome }}<br>
+        {% endfor %}
+        <button type="submit">Crea</button>
+    </form>
+    <a href="/">← Torna alla dashboard</a>
+</body>
+</html>

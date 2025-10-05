@@ -1,0 +1,217 @@
+/* style.css */
+
+/* 1. Reset e Font */
+:root {
+    --colore-primario: #3498db; /* Blu per azioni principali */
+    --colore-secondario: #2ecc71; /* Verde per successo */
+    --colore-pericolo: #e74c3c; /* Rosso per eliminazione */
+    --colore-sfondo: #f4f7f6; /* Sfondo generale chiaro */
+    --colore-contenuto: #ffffff; /* Sfondo per box e schede */
+    --colore-testo: #333333; /* Testo scuro */
+    --colore-bordo: #dddddd; /* Bordo leggero */
+    --colore-testo-chiaro: #777777; /* Testo secondario */
+    --font-famiglia: 'Inter', Arial, sans-serif;
+    --spaziatura: 15px;
+}
+
+body {
+    font-family: var(--font-famiglia);
+    line-height: 1.6;
+    background-color: var(--colore-sfondo);
+    color: var(--colore-testo);
+    margin: 0;
+    padding: var(--spaziatura);
+    display: flex; /* Utilizza Flexbox per il layout principale */
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex-grow: 1;
+    max-width: 1000px;
+    margin: auto;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+h1, h2 {
+    color: var(--colore-primario);
+    border-bottom: 2px solid var(--colore-bordo);
+    padding-bottom: 5px;
+    margin-top: 20px;
+}
+
+/* 2. Form e Input */
+form {
+    background-color: var(--colore-contenuto);
+    padding: var(--spaziatura);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    border: 1px solid var(--colore-bordo);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 16px 0;
+    display: inline-block;
+    border: 1px solid var(--colore-bordo);
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--colore-primario);
+    outline: none;
+}
+
+label {
+    font-weight: 600;
+    display: block;
+    margin-top: 10px;
+    color: var(--colore-testo-chiaro);
+}
+
+/* 3. Bottoni e Link */
+button[type="submit"],
+.button-link {
+    background-color: var(--colore-primario);
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button[type="submit"]:hover,
+.button-link:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+/* Bottone Elimina */
+form button[type="submit"][onclick*="Elimina"] {
+    background-color: var(--colore-pericolo);
+}
+
+form button[type="submit"][onclick*="Elimina"]:hover {
+    background-color: #c0392b;
+}
+
+/* Link */
+a {
+    color: var(--colore-primario);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #2980b9;
+    text-decoration: underline;
+}
+
+/* 4. Posizionamento del Logout */
+/* Aggiungi un'area specifica per il logout */
+.logout-container {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+/* Questo stile allinea a destra il pulsante di logout.
+   Sarà necessario racchiudere il link di logout in un <div> con classe .logout-container nel tuo `layout.html`.
+*/
+
+/* 5. Liste Progetti e Task */
+h2 + ul {
+    list-style: none;
+    padding: 0;
+}
+
+/* Stile per gli elementi di lista come schede */
+.card {
+    background-color: var(--colore-contenuto);
+    padding: var(--spaziatura);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 5px solid var(--colore-primario);
+}
+
+/* Applica lo stile .card agli elementi <li> dei progetti e task */
+body > ul > li, body ul ul li {
+    padding: var(--spaziatura);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 5px solid;
+    list-style: none;
+}
+
+/* Allinea meglio i pulsanti Elimina e Modifica */
+.project-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Spazio tra i bottoni */
+}
+
+/* Selettori specifici per i bottoni */
+body > ul > li .project-actions form,
+body ul ul li .task-actions form {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    background: none;
+    display: inline;
+}
+
+body > ul > li .project-actions button,
+body ul ul li .task-actions button,
+body ul ul li .task-actions a {
+    padding: 5px 10px;
+    font-size: 0.9em;
+    white-space: nowrap; /* Evita che i testi dei bottoni vadano a capo */
+}
+
+/* Colori bordo task */
+body ul ul li:has(b:contains("(da fare)")) {
+    border-left-color: #3498db;
+}
+body ul ul li:has(b:contains("(in corso)")) {
+    border-left-color: #f39c12;
+}
+body ul ul li:has(b:contains("(completato)")) {
+    border-left-color: var(--colore-secondario);
+}
+
+/* 6. Mobile */
+@media (max-width: 768px) {
+    body > ul > li, body ul ul li {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .project-actions, .task-actions {
+        margin-top: 10px;
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

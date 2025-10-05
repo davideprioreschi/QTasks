@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica progetto - QTasks</title>
+    <link rel="stylesheet" href="/static/style.css">
+<body>
+    <h1>Modifica progetto</h1>
+    <form method="post" action="/modifica_progetto/{{ progetto_id }}">
+        <input type="text" name="nome" value="{{ nome }}" required><br>
+        <label>Membri del progetto:</label><br>
+        {% for utente in tutti_utenti %}
+            <input type="checkbox" name="membri" value="{{ utente.id }}"
+                {% if utente.id in membri_attuali %}checked{% endif %}>
+            {{ utente.nome }}<br>
+        {% endfor %}
+        <button type="submit">Salva modifiche</button>
+    </form>
+    <a href="/">← Torna alla dashboard</a>
+</body>
+</html>
