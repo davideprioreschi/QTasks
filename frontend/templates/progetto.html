@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ progetto_nome }} - QTasks</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="project-details-container">
@@ -93,11 +94,15 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">&#9998;</a>
+                                <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 <form method="post" action="/elimina_task" style="display:inline;">
                                     <input type="hidden" name="task_id" value="{{ task.id }}">
                                     <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
-                                    <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">&#128465;</button>
+                                    <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </form>
                             </td>
                         </tr>

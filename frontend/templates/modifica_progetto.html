@@ -31,26 +31,23 @@
                     <div class="members-list">
                         {% for utente in tutti_utenti %}
                         <div class="member-item">
-                            {% if utente.id in membri_attuali %}
                             <div class="member-avatar">
                                 <!-- Placeholder per avatar utente -->
-                                <span class="member-avatar-text">{{ utente.nome[0]|upper }}</span>
+                                <span class="member-avatar-text">
+                                    {{ (utente.nome|replace('.', '')|replace(' ', ''))[:2]|upper }}
+                                </span>
+
                             </div>
                             <div class="member-info">
                                 <div class="member-name">{{ utente.nome }}</div>
                             </div>
                             <div class="member-actions">
-                                <input type="checkbox" name="membri" value="{{ utente.id }}" checked class="member-checkbox">
+                                <input type="checkbox" name="membri" value="{{ utente.id }}"
+                                    {% if utente.id in membri_attuali %}checked{% endif %}
+                                    class="member-checkbox">
                             </div>
-                            {% else %}
-                            <div class="member-info">
-                                <div class="member-name">{{ utente.nome }}</div>
-                            </div>
-                            <div class="member-actions">
-                                <input type="checkbox" name="membri" value="{{ utente.id }}" class="member-checkbox">
-                            </div>
-                            {% endif %}
                         </div>
+
                         {% endfor %}
                     </div>
                 </section>

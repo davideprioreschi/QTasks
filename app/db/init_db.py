@@ -8,8 +8,7 @@ def create_tables():
     # Assicurati che la cartella esista
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-    conn = sqlite3.connect(get_db_path())
-
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
     # Utenti
@@ -33,7 +32,18 @@ def create_tables():
         );
     ''')
 
-    # Task (con subtasks infiniti tramite parent_id)
+    # Progetti-Utenti (membri dei progetti)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS progetti_utenti (
+            progetto_id INTEGER,
+            utente_id INTEGER,
+            PRIMARY KEY (progetto_id, utente_id),
+            FOREIGN KEY (progetto_id) REFERENCES progetti(id),
+            FOREIGN KEY (utente_id) REFERENCES utenti(id)
+        );
+    ''')
+
+    # Task (ora con assegnato_a e scadenza)
     c.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,11 +53,13 @@ def create_tables():
             parent_id INTEGER,
             autore_id INTEGER NOT NULL,
             stato TEXT NOT NULL,
+            assegnato_a INTEGER,
+            scadenza TEXT,
             data_creazione TEXT DEFAULT CURRENT_TIMESTAMP,
-            data_scadenza TEXT,
             FOREIGN KEY (progetto_id) REFERENCES progetti(id),
             FOREIGN KEY (parent_id) REFERENCES tasks(id),
-            FOREIGN KEY (autore_id) REFERENCES utenti(id)
+            FOREIGN KEY (autore_id) REFERENCES utenti(id),
+            FOREIGN KEY (assegnato_a) REFERENCES utenti(id)
         );
     ''')
 

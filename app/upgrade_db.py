@@ -1,8 +1,10 @@
 import sqlite3
-from app.config import get_db_path
-
-db_path = get_db_path()
-conn = sqlite3.connect(db_path)
+# from app.config import get_db_path
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "app", "db", "qtasks.db")
+# db_path = get_db_path()
+conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
 
 # Solo se questi campi non esistono già!
