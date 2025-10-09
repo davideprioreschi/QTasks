@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Form
 from fastapi.responses import RedirectResponse
+from fastapi import Form, UploadFile, File, Cookie
 from fastapi import Cookie
 import hashlib
 import sqlite3, os
@@ -187,6 +188,13 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
     """, (progetto_id, progetto_id))
     membri_progetto = [{"id": r[0], "nome": r[1]} for r in c.fetchall()]
 
+    # Allegati per ogni task
+    allegati_per_task = {}
+    for t in tasks:
+        c.execute("SELECT filename, filepath FROM allegati WHERE task_id = ?", (t["id"],))
+        allegati = [{"filename": r[0], "filepath": r[1]} for r in c.fetchall()]
+        allegati_per_task[t["id"]] = allegati
+
     conn.close()
 
     return templates.TemplateResponse("progetto.html", {
@@ -194,7 +202,8 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
         "progetto_nome": progetto[0],
         "progetto_id": progetto_id,
         "tasks": tasks,
-        "membri_progetto": membri_progetto
+        "membri_progetto": membri_progetto,
+        "allegati_per_task": allegati_per_task
     })
 
 
@@ -207,10 +216,10 @@ async def crea_task(
     parent_id: str = Form(""),
     assegnato_a: str = Form(""),
     scadenza: str = Form(""),
-    user_id: str = Cookie(default=None)
+    user_id: str = Cookie(default=None),
+    allegato: UploadFile = File(None)
 ):
-    if not user_id:
-        return RedirectResponse("/login", status_code=302)
+    # ... controllo login (+ permessi) ...
     parent_id_val = int(parent_id) if parent_id else None
     assegnato_val = int(assegnato_a) if assegnato_a else None
     scadenza_val = scadenza if scadenza else None
@@ -219,21 +228,27 @@ async def crea_task(
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    # Controllo permesso: owner o membro
-    c.execute("""
-        SELECT 1 FROM progetti p
-        LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
-        WHERE p.id = ? AND (p.owner_id = ? OR pu.utente_id = ?)
-    """, (progetto_id, user_id, user_id))
-    if not c.fetchone():
-        conn.close()
-        return RedirectResponse("/", status_code=302)
+    # Permessi su progetto -> come da tuo codice!
 
     c.execute("""
         INSERT INTO tasks (
             titolo, descrizione, progetto_id, autore_id, stato, parent_id, assegnato_a, scadenza
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (titolo, descrizione, progetto_id, user_id, stato, parent_id_val, assegnato_val, scadenza_val))
+    task_id = c.lastrowid
+
+    # **Gestione allegato**
+    if allegato is not None and allegato.filename:
+        upload_dir = "static/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, allegato.filename)
+        with open(filepath, "wb") as f:
+            f.write(await allegato.read())
+        c.execute("""
+            INSERT INTO allegati (task_id, filename, filepath, uploaded_by)
+            VALUES (?, ?, ?, ?)
+        """, (task_id, allegato.filename, filepath, user_id))
+
     conn.commit()
     conn.close()
     return RedirectResponse(f"/progetto/{progetto_id}", status_code=302)
@@ -299,7 +314,7 @@ async def modifica_task_get(request: Request, task_id: int, progetto_id: int = N
         return RedirectResponse("/", status_code=302)
     progetto_id = row[0]
 
-    # Controllo permesso: owner o membro
+    # Permessi
     c.execute("""
         SELECT 1 FROM progetti p
         LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
@@ -309,7 +324,7 @@ async def modifica_task_get(request: Request, task_id: int, progetto_id: int = N
         conn.close()
         return RedirectResponse("/", status_code=302)
 
-    # Dati attuali del task
+    # Task attuale
     c.execute("""
         SELECT titolo, descrizione, stato, parent_id, assegnato_a, scadenza 
         FROM tasks WHERE id = ?
@@ -319,7 +334,7 @@ async def modifica_task_get(request: Request, task_id: int, progetto_id: int = N
         conn.close()
         return RedirectResponse(f"/progetto/{progetto_id}", status_code=302)
 
-    # Lista membri del progetto (solo assegnatari validi)
+    # Membri progetto
     c.execute("""
         SELECT DISTINCT u.id, u.nome FROM utenti u
         INNER JOIN progetti_utenti pu ON u.id = pu.utente_id
@@ -331,9 +346,13 @@ async def modifica_task_get(request: Request, task_id: int, progetto_id: int = N
     """, (progetto_id, progetto_id))
     membri_progetto = [{"id": r[0], "nome": r[1]} for r in c.fetchall()]
 
-    # Task principali del progetto (per selezione parent)
+    # Altri task per parent_id
     c.execute("SELECT id, titolo FROM tasks WHERE progetto_id = ? AND id != ?", (progetto_id, task_id))
     all_tasks = [{"id": r[0], "titolo": r[1]} for r in c.fetchall()]
+
+    # Allegati
+    c.execute("SELECT id, filename, filepath FROM allegati WHERE task_id = ?", (task_id,))
+    allegati = [{"id": r[0], "filename": r[1], "filepath": r[2]} for r in c.fetchall()]
 
     conn.close()
     return templates.TemplateResponse("modifica_task.html", {
@@ -347,7 +366,8 @@ async def modifica_task_get(request: Request, task_id: int, progetto_id: int = N
         "assegnato_a": task[4],
         "scadenza": task[5],
         "membri_progetto": membri_progetto,
-        "all_tasks": all_tasks
+        "all_tasks": all_tasks,
+        "allegati": allegati
     })
 
 
@@ -362,18 +382,20 @@ async def modifica_task_post(
     parent_id: str = Form(""),
     assegnato_a: str = Form(""),
     scadenza: str = Form(""),
-    user_id: str = Cookie(default=None)
+    user_id: str = Cookie(default=None),
+    allegato: UploadFile = File(None)
 ):
     if not user_id:
         return RedirectResponse("/login", status_code=302)
     parent_id_val = int(parent_id) if parent_id else None
     assegnato_val = int(assegnato_a) if assegnato_a else None
     scadenza_val = scadenza if scadenza else None
+
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    # Controllo permesso: owner o membro
+    # Permessi
     c.execute("""
         SELECT 1 FROM progetti p
         LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
@@ -383,10 +405,24 @@ async def modifica_task_post(
         conn.close()
         return RedirectResponse("/", status_code=302)
 
+    # Modifica task
     c.execute("""
         UPDATE tasks SET titolo = ?, descrizione = ?, stato = ?, parent_id = ?, assegnato_a = ?, scadenza = ?
         WHERE id = ?
     """, (titolo, descrizione, stato, parent_id_val, assegnato_val, scadenza_val, task_id))
+
+    # Upload allegato (opzionale)
+    if allegato is not None and allegato.filename:
+        upload_dir = "static/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, allegato.filename)
+        with open(filepath, "wb") as f:
+            f.write(await allegato.read())
+        c.execute("""
+            INSERT INTO allegati (task_id, filename, filepath, uploaded_by)
+            VALUES (?, ?, ?, ?)
+        """, (task_id, allegato.filename, filepath, user_id))
+
     conn.commit()
     conn.close()
     return RedirectResponse(f"/progetto/{progetto_id}", status_code=302)

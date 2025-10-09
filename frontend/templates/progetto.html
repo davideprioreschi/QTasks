@@ -19,23 +19,27 @@
             <!-- Colonna sinistra: Creazione task -->
             <div class="project-tasks-create-panel">
                 <h2 class="section-title">Create new task</h2>
-                <form method="post" action="/crea_task" class="create-task-form">
+                <form method="post" action="/crea_task" enctype="multipart/form-data" class="create-task-form">
                     <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
                     
                     <label for="titolo">Task name</label>
                     <input type="text" name="titolo" placeholder="e.g. Implementazione grafici" required>
-
-                    <!-- CAMPO DESCRIZIONE AGGIUNTO -->
+                    
                     <label for="descrizione">Description</label>
                     <textarea name="descrizione" placeholder="Add a description..."></textarea>
+                    
+                   <label for="allegato" class="custom-file-upload">Upload file</label>
+                    <input id="allegato" type="file" name="allegato" accept=".pdf,.jpg,.png,.doc,.xlsx,.zip,.txt" style="display: none;">
+                    <span id="file-name" class="file-name-display">No file selected</span>
 
+                    
                     <label for="stato">Status</label>
                     <select name="stato">
                         <option value="da_fare">Da fare</option>
                         <option value="in_corso">In corso</option>
                         <option value="completato">Completato</option>
                     </select>
-
+                    
                     <label for="assegnato_a">Assignee</label>
                     <select name="assegnato_a">
                         <option value="">Nessuno</option>
@@ -60,6 +64,7 @@
             </div>
 
 
+
             <!-- Colonna destra: Elenco task tabellare -->
             <div class="project-tasks-list-panel">
                 <h2 class="section-title">Task del progetto</h2>
@@ -80,6 +85,16 @@
                                 <span class="task-status">({{ task.stato }})</span>
                                 {% if task.descrizione %}
                                     <br><span class="task-description">{{ task.descrizione }}</span>
+                                {% endif %}
+                                {% if allegati_per_task[task.id] and allegati_per_task[task.id]|length > 0 %}
+                                    <div class="task-attachments" style="margin-top:0.5em;">
+                                        <i class="fas fa-paperclip" style="font-size:0.95em;opacity:0.66;"></i>
+                                        {% for allegato in allegati_per_task[task.id] %}
+                                            <a href="{{ allegato.filepath }}" download style="margin-right:0.5em;">
+                                                {{ allegato.filename }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
                                 {% endif %}
                             </td>
                             <td>
@@ -123,4 +138,12 @@
         </div>
     </div>
 </body>
+
+<script>
+document.getElementById('allegato').addEventListener('change', function () {
+    const fileName = this.files[0] ? this.files[0].name : 'No file selected';
+    document.getElementById('file-name').textContent = fileName;
+});
+</script>
+
 </html>

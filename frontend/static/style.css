@@ -1240,3 +1240,43 @@ textarea {
     }
 }
 
+.create-task-form input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: #f7fafc;
+    font-size: 0.95rem;
+    color: #4a5568;
+    cursor: pointer;
+}
+
+.create-task-form input[type="file"]:hover {
+    background-color: #edf2f7;
+    border-color: #667eea;
+}
+
+
+.custom-file-upload {
+    display: inline-block;
+    padding: 0.8rem 1.2rem;
+    background: #edf2f7;
+    color: #4a5568;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.custom-file-upload:hover {
+    transform: translateY(-2px);
+}
+
+.file-name-display {
+    margin-left: 1rem;
+    font-size: 0.9rem;
+    color: #4a5568;
+    font-style: italic;
+}
