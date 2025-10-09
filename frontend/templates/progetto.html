@@ -25,6 +25,10 @@
                     <label for="titolo">Task name</label>
                     <input type="text" name="titolo" placeholder="e.g. Implementazione grafici" required>
 
+                    <!-- CAMPO DESCRIZIONE AGGIUNTO -->
+                    <label for="descrizione">Description</label>
+                    <textarea name="descrizione" placeholder="Add a description..."></textarea>
+
                     <label for="stato">Status</label>
                     <select name="stato">
                         <option value="da_fare">Da fare</option>
@@ -54,6 +58,7 @@
                     <button type="submit" class="btn-accent">Crea Task</button>
                 </form>
             </div>
+
 
             <!-- Colonna destra: Elenco task tabellare -->
             <div class="project-tasks-list-panel">
@@ -95,15 +100,16 @@
                             </td>
                             <td>
                                 <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
-                                    <i class="fas fa-edit"></i>
+                                    <i class="fas fa-pen"></i>
                                 </a>
                                 <form method="post" action="/elimina_task" style="display:inline;">
                                     <input type="hidden" name="task_id" value="{{ task.id }}">
                                     <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
                                     <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
-                                        <i class="fas fa-trash-alt"></i>
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
+
                             </td>
                         </tr>
                         {% else %}
