@@ -1,0 +1,9 @@
+# Database SQLite (NON includere il file!)
+app/db/qtasks.db
+
+# Altri file di backup/copia DB se esistenti
+app/db/*.db
+app/db/*.sqlite
+
+# Uploads degli allegati (tutti i file caricati dagli utenti)
+frontend/static/uploads/

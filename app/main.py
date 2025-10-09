@@ -9,10 +9,17 @@ from fastapi import Cookie
 import hashlib
 import sqlite3, os
 from app.config import get_db_path
+from app.db.init_db import create_tables
 
 
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DB_PATH = os.path.join(BASE_DIR, "db", "qtasks.db")
+if not os.path.exists(DB_PATH):
+    print("Database non trovato, creo lo schema...")
+    create_tables()
+
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "frontend", "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "frontend", "templates"))
@@ -239,15 +246,18 @@ async def crea_task(
 
     # **Gestione allegato**
     if allegato is not None and allegato.filename:
-        upload_dir = "static/uploads"
+        upload_dir = os.path.join(BASE_DIR, "frontend", "static", "uploads")
         os.makedirs(upload_dir, exist_ok=True)
         filepath = os.path.join(upload_dir, allegato.filename)
         with open(filepath, "wb") as f:
             f.write(await allegato.read())
+        # Questa variabile va usata per il DB! (slash / e sempre con lo slash iniziale)
+        db_filepath = f"/static/uploads/{allegato.filename}"
+        # USA db_filepath NEL DATABASE! NON filepath
         c.execute("""
             INSERT INTO allegati (task_id, filename, filepath, uploaded_by)
             VALUES (?, ?, ?, ?)
-        """, (task_id, allegato.filename, filepath, user_id))
+        """, (task_id, allegato.filename, db_filepath, user_id))
 
     conn.commit()
     conn.close()
@@ -413,15 +423,22 @@ async def modifica_task_post(
 
     # Upload allegato (opzionale)
     if allegato is not None and allegato.filename:
-        upload_dir = "static/uploads"
+        upload_dir = os.path.join(BASE_DIR, "frontend", "static", "uploads")
         os.makedirs(upload_dir, exist_ok=True)
         filepath = os.path.join(upload_dir, allegato.filename)
         with open(filepath, "wb") as f:
             f.write(await allegato.read())
+        # Questa variabile va usata per il DB! (slash / e sempre con lo slash iniziale)
+        db_filepath = f"/static/uploads/{allegato.filename}"
+        # USA db_filepath NEL DATABASE! NON filepath
         c.execute("""
             INSERT INTO allegati (task_id, filename, filepath, uploaded_by)
             VALUES (?, ?, ?, ?)
-        """, (task_id, allegato.filename, filepath, user_id))
+        """, (task_id, allegato.filename, db_filepath, user_id))
+
+
+
+
 
     conn.commit()
     conn.close()
