@@ -87,6 +87,10 @@ a:hover {
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.logo-img {
+    filter: brightness(0) invert(1);
+}
+
 .nav-logo i {
     font-size: 1.6rem;
 }
@@ -548,7 +552,7 @@ a:hover {
 }
 
 .dashboard-nav {
-    background: #696BCF;
+    background: #0C2452 !important;
     padding: 1.2rem 3rem;
     display: flex;
     justify-content: space-between;
@@ -568,7 +572,7 @@ a:hover {
 .nav-logout {
     display: inline-block;
     padding: 0.7rem 2.1rem;
-    background: linear-gradient(90deg, #25b7ff 20%, #667eea 100%);
+    background: white;
     color: #fff;
     border-radius: 10px;
     font-weight: 600;
@@ -584,8 +588,8 @@ a:hover {
 
 .nav-logout:hover,
 .nav-logout:focus {
-    background: linear-gradient(80deg, #667eea 0%, #764ba2 82%);
-    box-shadow: 0 4px 16px #667eea44;
+    /* background: linear-gradient(80deg, #667eea 0%, #764ba2 82%); */
+    /* box-shadow: 0 4px 16px #667eea44; */
     transform: translateY(-1px) scale(1.04);
     color: #fff;
     text-decoration: none;
@@ -601,13 +605,13 @@ a:hover {
 
 .dashboard-welcome {
     font-size: 2.5rem;
-    color: #2d3748;
+    color: white;
     font-weight: 700;
     margin-bottom: 0.5rem;
 }
 
 .dashboard-subtext {
-    color: #718096;
+    color: white;
     font-size: 1.1rem;
     margin-bottom: 3rem;
 }
@@ -629,11 +633,6 @@ textarea {
     font-family: inherit;
     resize: none;
 }
-
-
-
-
-
 
 /* ===== CREATE PROJECT SECTION ===== */
 .create-project-section {
@@ -664,20 +663,24 @@ textarea {
 }
 
 .create-project-btn {
-    padding: 0.9rem 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    white-space: nowrap;
+  padding: 0.9rem 2rem;
+  background: #0c2452; /* trasparente vetroso */
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
+/* Effetto hover: più brillante e con luce interna */
 .create-project-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(255, 255, 255, 0.3);
 }
 
 /* ===== PROJECT LIST ===== */
@@ -693,11 +696,14 @@ textarea {
     color: #2d3748;
     margin-bottom: 1.5rem;
     font-weight: 700;
+    text-align: center;
 }
 
 .project-list-table {
     width: 100%;
     border-collapse: collapse;
+    text-align: center;
+    text-decoration: none;
 }
 
 .project-list-table thead {
@@ -707,12 +713,13 @@ textarea {
 
 .project-list-table th {
     padding: 1rem;
-    text-align: left;
+    /* text-align: left; */
     font-weight: 600;
     color: #4a5568;
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-align: center;
 }
 
 .project-list-table td {
