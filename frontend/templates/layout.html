@@ -37,7 +37,6 @@
       <!-- Barra top -->
       <nav class="dashboard-nav">
         <div class="nav-logo">
-          <!-- Sostituisci con logo se vuoi -->
           <img
             src="/static/logo-principale-transparent.png"
             width="150"
@@ -47,7 +46,6 @@
           />
         </div>
         <div class="nav-actions">
-          <!-- Icone notifiche, user -->
           <a
             href="/logout"
             class="nav-logout"
@@ -59,11 +57,16 @@
         </div>
       </nav>
 
-      <div class="dashboard-content">
+      <div class="dashboard-content container mt-4">
         <h1 class="dashboard-welcome">Bentornato/a, {{ utente.nome }}!</h1>
         <div class="dashboard-subtext">
-          Ecco una panoramica dei tuoi progetti attuali.
+          Ecco una panoramica dei tuoi progetti attuali, della rete e delle richieste.
         </div>
+        {% if successo_richiesta %}
+        <div class="alert alert-success my-3" role="alert">
+          {{ successo_richiesta }}
+        </div>
+        {% endif %}
 
         <!-- Crea nuovo progetto -->
         <section class="create-project-section">
@@ -90,10 +93,10 @@
           </form>
         </section>
 
-        <!-- Tabella progetti esistenti -->
+        <!-- I tuoi progetti -->
         <section class="project-list-section">
-          <h2 class="project-list-title">Progetti Attuali</h2>
-          <table class="project-list-table">
+          <h2 class="project-list-title">I tuoi progetti</h2>
+          <table class="project-list-table table">
             <thead>
               <tr>
                 <th>Nome Progetto</th>
@@ -107,33 +110,33 @@
                   <a href="/progetto/{{ progetto.id }}">{{ progetto.nome }}</a>
                 </td>
                 <td class="actions-col">
-                  <a
-                    href="/modifica_progetto/{{ progetto.id }}"
-                    class="project-modify"
-                    title="Modifica"
-                  >
-                    <i class="fas fa-pen"></i>
-                  </a>
-                  <form
-                    method="post"
-                    action="/elimina_progetto"
-                    style="display: inline"
-                  >
-                    <input
-                      type="hidden"
-                      name="progetto_id"
-                      value="{{ progetto.id }}"
-                    />
-                    <button
-                      type="submit"
-                      class="project-delete"
-                      title="Elimina"
-                      onclick="return confirm('Vuoi eliminare questo progetto e tutti i suoi task?');"
-                    >
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </form>
+                  {% if progetto.owner_id|string == user_id|string or progetto.capo_progetto_id|string == user_id|string %}
+
+                    <!-- Owner o Capo progetto: Modifica/Elimina -->
+                    <a href="/modifica_progetto/{{ progetto.id }}" class="project-modify" title="Modifica"><i class="fas fa-pen"></i></a>
+                    <form method="post" action="/elimina_progetto" style="display:inline;">
+                      <input type="hidden" name="progetto_id" value="{{ progetto.id }}">
+                      <button type="submit" class="project-delete" title="Elimina" onclick="return confirm('Vuoi eliminare questo progetto e tutti i suoi task?');"><i class="fas fa-trash"></i></button>
+                    </form>
+                  {% elif progetto.id in ids_miei_progetti %}
+                    <a href="/progetto/{{ progetto.id }}" class="project-view" title="Visualizza progetto">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                  {% elif progetto.id in richieste_inviate %}
+
+                    <button class="btn btn-secondary btn-sm" disabled>Richiesta inviata</button>
+                  {% else %}
+                    <form method="post" action="/progetti/richiesta" style="display:inline;">
+                      <input type="hidden" name="progetto_id" value="{{ progetto.id }}">
+                      <button type="submit" class="btn btn-sm btn-primary">Richiedi Accesso</button>
+                    </form>
+                  {% endif %}
+
                 </td>
+
+
+
+
               </tr>
               {% else %}
               <tr>
@@ -143,6 +146,131 @@
             </tbody>
           </table>
         </section>
+
+        <!-- Altri progetti -->
+        <section class="project-list-section" style="border-top-left-radius:0;border-top-right-radius:0;">
+          <h2 class="project-list-title">Altri progetti</h2>
+          <table class="project-list-table table">
+            <thead>
+              <tr>
+                <th>Nome Progetto</th>
+                <th class="actions-col">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {# Prepara la lista solo degli altri progetti #}
+              {% set altri_progetti = [] %}
+              {% for progetto in progetti_rete %}
+                {% if progetto.id not in ids_miei_progetti %}
+                  {% set _ = altri_progetti.append(progetto) %}
+                {% endif %}
+              {% endfor %}
+              {% if altri_progetti %}
+                {% for progetto in altri_progetti %}
+                  <tr>
+                    <td>
+                      <a href="/progetto/{{ progetto.id }}">{{ progetto.nome }}</a>
+                    </td>
+                    <td class="actions-col">
+                      {% if progetto.id in richieste_inviate %}
+                        <button class="btn btn-secondary btn-sm" disabled>Richiesta inviata</button>
+                      {% else %}
+                        <form method="post" action="/progetti/richiesta" style="display: inline">
+                          <input type="hidden" name="progetto_id" value="{{ progetto.id }}" />
+                          <button type="submit" class="btn btn-sm btn-primary">Richiedi Accesso</button>
+                        </form>
+                      {% endif %}
+                    </td>
+
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="2">Nessun altro progetto trovato</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </section>
+
+
+
+
+
+     {% if utente.ruolo == "admin" %}
+      <section class="project-list-section" style="border-top-left-radius:0;border-top-right-radius:0;">
+        <h2 class="project-list-title">Utenti nella rete</h2>
+        <table class="project-list-table table">
+          <thead>
+            <tr>
+              <th>Nome utente</th>
+              <th class="actions-col">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ut in utenti_rete %}
+            <tr>
+              <td>{{ ut.nome }}</td>
+              <td class="actions-col">
+                {% if ut.id != utente.id %}
+                <form method="post" action="/admin/elimina_utente" style="display:inline;">
+                  <input type="hidden" name="utente_id" value="{{ ut.id }}" />
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare questo utente?')">Elimina</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2">Nessun utente trovato</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+
+
+
+
+        <!-- Sezione Richieste da gestire (solo per admin/capo progetto) -->
+        {% if richieste %}
+          <section class="mt-5">
+            <h2>Richieste di ingresso ai progetti</h2>
+            <table class="table table-warning table-striped">
+              <thead>
+                <tr>
+                  <th>Utente</th>
+                  <th>Progetto</th>
+                  <th>Data Richiesta</th>
+                  <th>Stato</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in richieste %}
+                <tr>
+                  <td>{{ r.nome }}</td>
+                  <td>{{ r.progetto_nome }}</td>
+                  <td>{{ r.data }}</td>
+                  <td>{{ r.stato }}</td>
+                  <td>
+                    <form method="post" action="/progetti/richiesta/{{ r.id }}/accetta" style="display:inline;">
+                      <button type="submit" class="btn btn-success btn-sm">Accetta</button>
+                    </form>
+                    <form method="post" action="/progetti/richiesta/{{ r.id }}/rifiuta" style="display:inline;">
+                      <button type="submit" class="btn btn-danger btn-sm">Rifiuta</button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">Nessuna richiesta</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+          {% endif %}
+
       </div>
     </div>
     {% else %}
@@ -162,16 +290,13 @@
             <i class="fas fa-check-circle"></i>
             <span>System Ready</span>
           </div>
-
           <h1 class="welcome-title">Benvenuti su QTasks!</h1>
           <p class="welcome-subtitle">Your Smart Task Management Solution</p>
-
           <p class="welcome-description">
             Your local QTasks instance is running perfectly. Start organizing
             your projects, tracking tasks, and collaborating with your team
             efficiently.
           </p>
-
           <div class="welcome-actions">
             <a href="/login" class="btn-primary">
               <i class="fas fa-sign-in-alt"></i> Login

@@ -1,9 +1,26 @@
-# Database SQLite (NON includere il file!)
-app/db/qtasks.db
+# Python
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*.pyo
 
-# Altri file di backup/copia DB se esistenti
+# Virtual Environment
+venv/
+.env/
+.venv/
+
+# SQLite DB locali
 app/db/*.db
 app/db/*.sqlite
 
-# Uploads degli allegati (tutti i file caricati dagli utenti)
+# File allegati runtime
 frontend/static/uploads/
+
+# File di ambiente
+.env
+
+# VS Code e altri editor/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project

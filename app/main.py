@@ -30,30 +30,96 @@ async def home(request: Request, user_id: str = Cookie(default=None)):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     utente = None
-    progetti = []
-
     if user_id:
-        # Recupera dati utente
         c.execute("SELECT nome, ruolo FROM utenti WHERE id = ?", (user_id,))
         row = c.fetchone()
         if row:
             utente = {"nome": row[0], "ruolo": row[1]}
-        # Recupera progetti dove utente è owner o membro
-        c.execute("""
-            SELECT DISTINCT p.id, p.nome FROM progetti p
-            LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
-            WHERE p.owner_id = ? OR pu.utente_id = ?
-            ORDER BY p.nome
-        """, (user_id, user_id))
-        progetti = [{"id": r[0], "nome": r[1]} for r in c.fetchall()]
+    c.execute("SELECT id, nome FROM utenti")
+    utenti_rete = [{"id": r[0], "nome": r[1]} for r in c.fetchall()]
+    # con owner_id e capo_progetto_id
+    c.execute("SELECT id, nome, owner_id, capo_progetto_id FROM progetti")
+    progetti_rete = [{"id": r[0], "nome": r[1], "owner_id": r[2], "capo_progetto_id": r[3]} for r in c.fetchall()]
+    c.execute("""
+    SELECT DISTINCT p.id, p.nome, p.owner_id, p.capo_progetto_id FROM progetti p
+    LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
+    WHERE p.owner_id = ? OR pu.utente_id = ?
+    ORDER BY p.nome
+""", (user_id, user_id))
+    progetti = [{"id": r[0], "nome": r[1], "owner_id": r[2], "capo_progetto_id": r[3]} for r in c.fetchall()]
+
+    ids_miei_progetti = [p["id"] for p in progetti]
+    c.execute("SELECT progetto_id FROM progetti_richieste WHERE utente_id=? AND stato='pending'", (user_id,))
+    richieste_inviate = [r[0] for r in c.fetchall()]
+    # Blocchi richieste pending (solo se admin/capo/owner)
+    richieste = []
+    if utente and user_id:
+        c.execute("SELECT id FROM progetti WHERE capo_progetto_id=? OR owner_id=?", (user_id, user_id))
+        progetti_gestiti = [r[0] for r in c.fetchall()]
+        for pid in progetti_gestiti:
+            c.execute(
+                """SELECT pr.id, pr.utente_id, u.nome, pr.stato, pr.data_request, pr.progetto_id, p.nome
+                   FROM progetti_richieste pr
+                   JOIN utenti u ON pr.utente_id = u.id
+                   JOIN progetti p ON pr.progetto_id = p.id
+                   WHERE pr.progetto_id = ? AND pr.stato='pending'""", (pid,))
+            richieste += [{"id": r[0], "utente_id": r[1], "nome": r[2], "stato": r[3], "data": r[4],
+                           "progetto_id": r[5], "progetto_nome": r[6]} for r in c.fetchall()]
     conn.close()
-    
     return templates.TemplateResponse("layout.html", {
-        "request": request, 
+        "request": request,
         "utente": utente,
+        "user_id": user_id,
         "progetti": progetti,
+        "ids_miei_progetti": ids_miei_progetti,
+        "utenti_rete": utenti_rete,
+        "progetti_rete": progetti_rete,
+        "richieste_inviate": richieste_inviate,
+        "richieste": richieste,
         "title": "Dashboard QTasks"
     })
+
+
+
+@app.post("/admin/elimina_utente")
+async def elimina_utente(utente_id: int = Form(...), user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # Solo admin può eliminare utenti
+    c.execute("SELECT ruolo FROM utenti WHERE id = ?", (user_id,))
+    ruolo = c.fetchone()[0] if user_id else None
+    if ruolo != "admin":
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    # Cancella utente (cascata: membership, progetti_owner, allegati, ecc.)
+    c.execute("DELETE FROM progetti_utenti WHERE utente_id = ?", (utente_id,))
+    c.execute("DELETE FROM progetti WHERE owner_id = ?", (utente_id,)) # opzionale, dipende da politica
+    c.execute("DELETE FROM utenti WHERE id = ?", (utente_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/", status_code=302)
+
+
+@app.post("/admin/elimina_progetto")
+async def elimina_progetto_admin(progetto_id: int = Form(...), user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT ruolo FROM utenti WHERE id = ?", (user_id,))
+    ruolo = c.fetchone()[0] if user_id else None
+    if ruolo != "admin":
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    # Rimozione cascata di tutto ciò che dipende dal progetto
+    c.execute("DELETE FROM tasks WHERE progetto_id = ?", (progetto_id,))
+    c.execute("DELETE FROM progetti_utenti WHERE progetto_id = ?", (progetto_id,))
+    c.execute("DELETE FROM progetti WHERE id = ?", (progetto_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/", status_code=302)
+
+
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -83,29 +149,175 @@ async def register_get(request: Request):
 @app.post("/register", response_class=HTMLResponse)
 async def register_post(request: Request, nome: str = Form(...), email: str = Form(...), password: str = Form(...)):
     password_hash = hashlib.sha256(password.encode()).hexdigest()
-    
     conn = sqlite3.connect(get_db_path())
     c = conn.cursor()
     try:
-        # Il primo utente che si registra diventa automaticamente admin
-        c.execute("SELECT COUNT(*) FROM utenti")
-        user_count = c.fetchone()[0]
-        ruolo = "admin" if user_count == 0 else "utente"
-        
+        c.execute("SELECT COUNT(*) FROM utenti WHERE ruolo='admin'")
+        admin_count = c.fetchone()[0]
+        ruolo = "admin" if admin_count == 0 else "utente"
         c.execute("INSERT INTO utenti (nome, email, password_hash, ruolo) VALUES (?, ?, ?, ?)",
                   (nome, email, password_hash, ruolo))
         conn.commit()
+        c.execute("SELECT id FROM utenti WHERE email = ?", (email,))
+        user_id = c.fetchone()[0]
         conn.close()
-        return templates.TemplateResponse("register.html", {"request": request, "success": f"Utente {nome} registrato con successo come {ruolo}!"})
+        response = RedirectResponse("/", status_code=302)
+        response.set_cookie(key="user_id", value=str(user_id), httponly=True)
+        return response
     except sqlite3.IntegrityError:
         conn.close()
         return templates.TemplateResponse("register.html", {"request": request, "error": "Email già esistente!"})
+
     
 @app.get("/logout")
 async def logout():
     response = RedirectResponse("/", status_code=302)
     response.delete_cookie("user_id")
     return response
+
+
+@app.get("/progetti/richieste", response_class=HTMLResponse)
+async def richieste_progetti(request: Request, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # Trova progetti dove l'utente è capo progetto o owner
+    c.execute("""
+        SELECT id FROM progetti WHERE capo_progetto_id=? OR owner_id=?
+    """, (user_id, user_id))
+    progetti_gestiti = [r[0] for r in c.fetchall()]
+    # Recupera richieste pendenti per questi progetti
+    richieste = []
+    for pid in progetti_gestiti:
+        c.execute("""
+            SELECT pr.id, pr.utente_id, u.nome, pr.stato, pr.data_request, pr.progetto_id, p.nome
+            FROM progetti_richieste pr
+            JOIN utenti u ON pr.utente_id = u.id
+            JOIN progetti p ON pr.progetto_id = p.id
+            WHERE pr.progetto_id = ? AND pr.stato='pending'
+        """, (pid,))
+        richieste += [{"id": r[0], "utente_id": r[1], "nome": r[2], "stato": r[3], "data": r[4],
+                      "progetto_id": r[5], "progetto_nome": r[6]} for r in c.fetchall()]
+    conn.close()
+    return templates.TemplateResponse("layout.html", {
+        "request": request,
+        # ... altre variabili che servono alla dashboard ...
+        "richieste": richieste,
+        "title": "Dashboard QTasks"
+    })
+
+
+@app.post("/progetti/richiesta", response_class=HTMLResponse)
+async def invia_richiesta_progetto(request: Request, progetto_id: int = Form(...), user_id: str = Cookie(default=None)):
+    if not user_id:
+        return RedirectResponse("/login", status_code=302)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM progetti_richieste WHERE utente_id=? AND progetto_id=? AND stato='pending'",
+              (user_id, progetto_id))
+    msg = None
+    if c.fetchone()[0] > 0:
+        msg = "Hai già richiesto l'accesso: la tua richiesta è in attesa di approvazione."
+    else:
+        c.execute("INSERT INTO progetti_richieste (utente_id, progetto_id, stato) VALUES (?, ?, ?)",
+                  (user_id, progetto_id, 'pending'))
+        conn.commit()
+        msg = "Richiesta inviata! Attendi che il capo progetto la approvi."
+    c.execute("SELECT nome, ruolo FROM utenti WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    utente = {"nome": row[0], "ruolo": row[1]} if row else None
+    c.execute("SELECT id, nome FROM utenti")
+    utenti_rete = [{"id": r[0], "nome": r[1]} for r in c.fetchall()]
+    c.execute("SELECT id, nome, owner_id, capo_progetto_id FROM progetti")
+    progetti_rete = [{"id": r[0], "nome": r[1], "owner_id": r[2], "capo_progetto_id": r[3]} for r in c.fetchall()]
+    c.execute("""
+    SELECT DISTINCT p.id, p.nome, p.owner_id, p.capo_progetto_id FROM progetti p
+    LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
+    WHERE p.owner_id = ? OR pu.utente_id = ?
+    ORDER BY p.nome
+""", (user_id, user_id))
+    progetti = [{"id": r[0], "nome": r[1], "owner_id": r[2], "capo_progetto_id": r[3]} for r in c.fetchall()]
+
+    ids_miei_progetti = [p["id"] for p in progetti]
+    c.execute("SELECT progetto_id FROM progetti_richieste WHERE utente_id=? AND stato='pending'", (user_id,))
+    richieste_inviate = [r[0] for r in c.fetchall()]
+    # Blocchi richieste pending (solo se admin/capo/owner)
+    richieste = []
+    if utente and user_id:
+        c.execute("SELECT id FROM progetti WHERE capo_progetto_id=? OR owner_id=?", (user_id, user_id))
+        progetti_gestiti = [r[0] for r in c.fetchall()]
+        for pid in progetti_gestiti:
+            c.execute(
+                """SELECT pr.id, pr.utente_id, u.nome, pr.stato, pr.data_request, pr.progetto_id, p.nome
+                   FROM progetti_richieste pr
+                   JOIN utenti u ON pr.utente_id = u.id
+                   JOIN progetti p ON pr.progetto_id = p.id
+                   WHERE pr.progetto_id = ? AND pr.stato='pending'""", (pid,))
+            richieste += [{"id": r[0], "utente_id": r[1], "nome": r[2], "stato": r[3], "data": r[4],
+                           "progetto_id": r[5], "progetto_nome": r[6]} for r in c.fetchall()]
+    conn.close()
+    return templates.TemplateResponse("layout.html", {
+        "request": request,
+        "utente": utente,
+        "user_id": user_id,
+        "progetti": progetti,
+        "ids_miei_progetti": ids_miei_progetti,
+        "utenti_rete": utenti_rete,
+        "progetti_rete": progetti_rete,
+        "richieste_inviate": richieste_inviate,
+        "richieste": richieste,
+        "successo_richiesta": msg,
+        "title": "Dashboard QTasks"
+    })
+
+
+
+
+
+@app.post("/progetti/richiesta/{richiesta_id}/accetta")
+async def accetta_richiesta(richiesta_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # Trova utente e progetto associati
+    c.execute("SELECT utente_id, progetto_id FROM progetti_richieste WHERE id=?", (richiesta_id,))
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    utente_id, progetto_id = r
+    # Aggiorna stato richiesta
+    c.execute("UPDATE progetti_richieste SET stato='accepted' WHERE id=?", (richiesta_id,))
+    # Aggiungi utente alla tabella membri progetto con ruolo base (None o "Utente")
+    c.execute("INSERT OR IGNORE INTO progetti_utenti (progetto_id, utente_id, ruolo_id) VALUES (?, ?, NULL)",
+              (progetto_id, utente_id))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/", status_code=302)
+
+@app.post("/progetti/richiesta/{richiesta_id}/rifiuta")
+async def rifiuta_richiesta(richiesta_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("UPDATE progetti_richieste SET stato='rejected' WHERE id=?", (richiesta_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/", status_code=302)
+
+
+@app.post("/progetti/{progetto_id}/ruoli")
+async def crea_ruolo(progetto_id: int, nome: str = Form(...), permessi_json: str = Form(...), user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("INSERT INTO ruoli (progetto_id, nome, permessi_json) VALUES (?, ?, ?)",
+              (progetto_id, nome, permessi_json))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/progetto/{progetto_id}/gestione", status_code=302)
+
 
 @app.post("/crea_progetto")
 async def crea_progetto_post(
@@ -118,15 +330,16 @@ async def crea_progetto_post(
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("INSERT INTO progetti (nome, owner_id) VALUES (?, ?)", (nome_progetto, user_id))
+    c.execute("INSERT INTO progetti (nome, owner_id, capo_progetto_id) VALUES (?, ?, ?)", (nome_progetto, user_id, user_id))
     progetto_id = c.lastrowid
-    # L’owner è sempre membro “di default”
+    # Owner è sempre anche capo progetto e membro
     c.execute("INSERT INTO progetti_utenti (progetto_id, utente_id) VALUES (?, ?)", (progetto_id, int(user_id)))
     for membro_id in membri:
         c.execute("INSERT OR IGNORE INTO progetti_utenti (progetto_id, utente_id) VALUES (?, ?)", (progetto_id, int(membro_id)))
     conn.commit()
     conn.close()
     return RedirectResponse("/", status_code=302)
+
 
 
 
