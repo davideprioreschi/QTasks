@@ -69,7 +69,7 @@ def create_tables():
         );
     ''')
 
-    # Task (con assegnato_a e scadenza)
+    # Task (con assegnato_a, scadenza, PRIORITY e POSITION)
     c.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +82,8 @@ def create_tables():
             assegnato_a INTEGER,
             scadenza TEXT,
             data_creazione TEXT DEFAULT CURRENT_TIMESTAMP,
+            priority INTEGER DEFAULT 1,     -- livello priorità (1=bassa, 2=media, 3=alta)
+            position INTEGER DEFAULT 0,     -- ordinamento drag&drop (0=alto, in ordine crescente)
             FOREIGN KEY (progetto_id) REFERENCES progetti(id),
             FOREIGN KEY (parent_id) REFERENCES tasks(id),
             FOREIGN KEY (autore_id) REFERENCES utenti(id),

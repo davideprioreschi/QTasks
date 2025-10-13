@@ -10,6 +10,9 @@ import hashlib
 import sqlite3, os
 from app.config import get_db_path
 from app.db.init_db import create_tables
+from fastapi.responses import StreamingResponse
+import csv
+from io import StringIO
 
 
 app = FastAPI()
@@ -119,7 +122,42 @@ async def elimina_progetto_admin(progetto_id: int = Form(...), user_id: str = Co
     conn.close()
     return RedirectResponse("/", status_code=302)
 
+@app.post("/progetto/{progetto_id}/tasks/import")
+async def import_tasks_csv(progetto_id: int, file: UploadFile = File(...), user_id: str = Cookie(default=None)):
+    import csv
+    db_path = get_db_path()
+    content = await file.read()
+    lines = content.decode("utf-8").splitlines()
+    reader = csv.DictReader(lines)
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    for row in reader:
+        c.execute("""
+            INSERT INTO tasks
+            (titolo, descrizione, stato, parent_id, assegnato_a, scadenza, priority, position, progetto_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (row["titolo"], row["descrizione"], row["stato"], row["parent_id"] or None, row["assegnato_a"] or None,
+              row["scadenza"], int(row.get("priority", 1)), int(row.get("position", 0)), progetto_id))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/progetto/{progetto_id}", status_code=302)
 
+
+@app.get("/progetto/{progetto_id}/tasks/export")
+async def export_tasks_csv(progetto_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id, titolo, descrizione, stato, parent_id, assegnato_a, scadenza, priority, position FROM tasks WHERE progetto_id=?", (progetto_id,))
+    tasks = c.fetchall()
+    conn.close()
+    si = StringIO()
+    writer = csv.writer(si)
+    writer.writerow(["id","titolo","descrizione","stato","parent_id","assegnato_a","scadenza","priority","position"])
+    for t in tasks:
+        writer.writerow(t)
+    si.seek(0)
+    return StreamingResponse(si, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=tasks_progetto_{progetto_id}.csv"})
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -364,7 +402,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    # Controlla permesso: owner o membro
+    # Controlla permessi
     c.execute("""
         SELECT 1 FROM progetti p
         LEFT JOIN progetti_utenti pu ON p.id = pu.progetto_id
@@ -381,9 +419,13 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
         conn.close()
         return RedirectResponse("/", status_code=302)
 
-    # Task del progetto (includi anche campo assegnato_a e scadenza)
-    c.execute("""SELECT id, titolo, descrizione, stato, parent_id, assegnato_a, scadenza 
-                 FROM tasks WHERE progetto_id = ?""", (progetto_id,))
+    # Recupera tasks con priority/position
+    c.execute("""
+        SELECT id, titolo, descrizione, stato, parent_id, assegnato_a, scadenza, priority, position 
+        FROM tasks 
+        WHERE progetto_id = ?
+        ORDER BY (stato='completed'), priority DESC, position ASC, id ASC
+    """, (progetto_id,))
     tasks = []
     for r in c.fetchall():
         tasks.append({
@@ -393,10 +435,12 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
             "stato": r[3],
             "parent_id": r[4],
             "assegnato_a": r[5],
-            "scadenza": r[6]
+            "scadenza": r[6],
+            "priority": r[7],
+            "position": r[8]
         })
 
-    # Lista membri del progetto (owner + tabella)
+    # Lista membri del progetto
     c.execute("""
         SELECT DISTINCT u.id, u.nome FROM utenti u
         INNER JOIN progetti_utenti pu ON u.id = pu.utente_id
@@ -412,7 +456,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
     allegati_per_task = {}
     for t in tasks:
         c.execute("SELECT filename, filepath FROM allegati WHERE task_id = ?", (t["id"],))
-        allegati = [{"filename": r[0], "filepath": r[1]} for r in c.fetchall()]
+        allegati = [{"filename": a[0], "filepath": a[1]} for a in c.fetchall()]
         allegati_per_task[t["id"]] = allegati
 
     conn.close()
@@ -427,6 +471,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
     })
 
 
+
 @app.post("/crea_task")
 async def crea_task(
     progetto_id: int = Form(...),
@@ -436,6 +481,7 @@ async def crea_task(
     parent_id: str = Form(""),
     assegnato_a: str = Form(""),
     scadenza: str = Form(""),
+    priority: int = Form(1),
     user_id: str = Cookie(default=None),
     allegato: UploadFile = File(None)
 ):
@@ -448,13 +494,11 @@ async def crea_task(
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    # Permessi su progetto -> come da tuo codice!
-
     c.execute("""
         INSERT INTO tasks (
-            titolo, descrizione, progetto_id, autore_id, stato, parent_id, assegnato_a, scadenza
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (titolo, descrizione, progetto_id, user_id, stato, parent_id_val, assegnato_val, scadenza_val))
+            titolo, descrizione, progetto_id, autore_id, stato, parent_id, assegnato_a, scadenza, priority
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (titolo, descrizione, progetto_id, user_id, stato, parent_id_val, assegnato_val, scadenza_val, priority))
     task_id = c.lastrowid
 
     # **Gestione allegato**
@@ -464,9 +508,7 @@ async def crea_task(
         filepath = os.path.join(upload_dir, allegato.filename)
         with open(filepath, "wb") as f:
             f.write(await allegato.read())
-        # Questa variabile va usata per il DB! (slash / e sempre con lo slash iniziale)
         db_filepath = f"/static/uploads/{allegato.filename}"
-        # USA db_filepath NEL DATABASE! NON filepath
         c.execute("""
             INSERT INTO allegati (task_id, filename, filepath, uploaded_by)
             VALUES (?, ?, ?, ?)
@@ -475,6 +517,48 @@ async def crea_task(
     conn.commit()
     conn.close()
     return RedirectResponse(f"/progetto/{progetto_id}", status_code=302)
+
+
+
+@app.post("/task/{task_id}/toggle_complete")
+async def toggle_task_complete(task_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT stato FROM tasks WHERE id=?", (task_id,))
+    stato = c.fetchone()
+    if not stato:
+        conn.close()
+        return {"ok": False}
+    nuovo_stato = 'todo' if stato[0] == 'completed' else 'completed'
+    c.execute("UPDATE tasks SET stato=? WHERE id=?", (nuovo_stato, task_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "new_state": nuovo_stato}
+
+@app.post("/task/{task_id}/set_priority")
+async def set_task_priority(task_id: int, priority: int = Form(...), user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("UPDATE tasks SET priority=? WHERE id=?", (priority, task_id))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/progetto/{request.query_params.get('progetto_id')}", status_code=302)
+
+
+@app.post("/task/{task_id}/set_position")
+async def set_task_position(task_id: int, position: int = Form(...), user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("UPDATE tasks SET position=? WHERE id=?", (position, task_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+
 
 
 

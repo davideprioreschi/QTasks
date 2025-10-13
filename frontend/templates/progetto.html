@@ -5,6 +5,21 @@
     <title>{{ progetto_nome }} - QTasks</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .task-completed { text-decoration: line-through; color: gray; opacity: 0.7; }
+        .priority-low { color: #36a832; font-weight: bold; }
+        .priority-medium { color: #e9c02f; font-weight: bold; }
+        .priority-high { color: #d43e3e; font-weight: bold; }
+        .priority-star { margin-right: 2px;}
+        .subtask { }
+        .subtask-1 { background: #f8fafc; border-left: 4px solid #acd8f2; }
+        .subtask-2 { background: #e8f7ff; border-left: 4px solid #6bd0fe; }
+        .subtask-3 { background: #f6eaff; border-left: 4px solid #ba8af2; }
+        .subtask-4 { background: #eafff1; border-left: 4px solid #8ff2ba; }
+        .subtask-5 { background: #fff7ea; border-left: 4px solid #f2c88a; }
+        .subtask-0 { background: #fff; /* Livello root, senza border-left*/ }
+        /* Ripete i colori; se vuoi altri colori basta aggiungere .subtask-6 ... */
+    </style>
 </head>
 <body>
     <div class="project-details-container">
@@ -21,25 +36,19 @@
                 <h2 class="section-title">Create new task</h2>
                 <form method="post" action="/crea_task" enctype="multipart/form-data" class="create-task-form">
                     <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
-                    
                     <label for="titolo">Task name</label>
                     <input type="text" name="titolo" placeholder="e.g. Implementazione grafici" required>
-                    
                     <label for="descrizione">Description</label>
                     <textarea name="descrizione" placeholder="Add a description..."></textarea>
-                    
-                   <label for="allegato" class="custom-file-upload">Upload file</label>
+                    <label for="allegato" class="custom-file-upload">Upload file</label>
                     <input id="allegato" type="file" name="allegato" accept=".pdf,.jpg,.png,.doc,.xlsx,.zip,.txt" style="display: none;">
                     <span id="file-name" class="file-name-display">No file selected</span>
-
-                    
                     <label for="stato">Status</label>
                     <select name="stato">
                         <option value="da_fare">Da fare</option>
                         <option value="in_corso">In corso</option>
-                        <option value="completato">Completato</option>
+                        <option value="completed">Completato</option>
                     </select>
-                    
                     <label for="assegnato_a">Assignee</label>
                     <select name="assegnato_a">
                         <option value="">Nessuno</option>
@@ -47,10 +56,14 @@
                             <option value="{{ membro.id }}">{{ membro.nome }}</option>
                         {% endfor %}
                     </select>
-                    
                     <label for="scadenza">Due date</label>
                     <input type="date" name="scadenza">
-
+                    <label for="priority">Priority</label>
+                    <select name="priority">
+                        <option value="1">Bassa ⭐</option>
+                        <option value="2">Media ⭐⭐</option>
+                        <option value="3">Alta ⭐⭐⭐</option>
+                    </select>
                     <label for="parent_id">Sub-task of</label>
                     <select name="parent_id">
                         <option value="">Nessuno</option>
@@ -58,80 +71,92 @@
                             <option value="{{ task.id }}">{{ task.titolo }}</option>
                         {% endfor %}
                     </select>
-                    
                     <button type="submit" class="btn-accent">Crea Task</button>
                 </form>
             </div>
 
-
-
             <!-- Colonna destra: Elenco task tabellare -->
             <div class="project-tasks-list-panel">
                 <h2 class="section-title">Task del progetto</h2>
+                
+                {% macro render_tasks(tasks, parent_id=None, level=0) %}
+                    {% set level_mod = level % 6 %}
+                    {% for task in tasks if task.parent_id == parent_id %}
+                    <tr class="{% if task.stato == 'completed' %}task-completed{% endif %}">
+                        <td>
+                            <input type="checkbox"
+                                onchange="toggleComplete(this, '{{ task.id }}', '{{ progetto_id }}')"
+                                {% if task.stato == 'completed' %}checked{% endif %}
+                                title="Completa/spunta">
+                        </td>
+                        <td class="subtask subtask-{{ level_mod }}" style="padding-left: {{ level * 28 }}px;">
+                            {{ task.titolo }}
+                            <span class="task-status">({{task.stato}})</span>
+                            {% if task.descrizione %}
+                                <br><span class="task-description">{{ task.descrizione }}</span>
+                            {% endif %}
+                            {% if allegati_per_task[task.id] and allegati_per_task[task.id]|length > 0 %}
+                                <div class="task-attachments" style="margin-top:0.5em;">
+                                    <i class="fas fa-paperclip" style="font-size:0.95em;opacity:0.66;"></i>
+                                    {% for allegato in allegati_per_task[task.id] %}
+                                        <a href="{{ allegato.filepath }}" download style="margin-right:0.5em;">
+                                            {{ allegato.filename }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if task.priority == 3 %}
+                                <span class="priority-high">{% for i in range(0,3) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+                            {% elif task.priority == 2 %}
+                                <span class="priority-medium">{% for i in range(0,2) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+                            {% else %}
+                                <span class="priority-low"><i class="fas fa-star priority-star"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if task.assegnato_a %}
+                                {% for membro in membri_progetto %}
+                                    {% if membro.id == task.assegnato_a %}
+                                        {{ membro.nome }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Nessuno
+                            {% endif %}
+                        </td>
+                        <td>{% if task.scadenza %}{{ task.scadenza }}{% endif %}</td>
+                        <td>
+                            <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
+                                <i class="fas fa-pen"></i>
+                            </a>
+                            <form method="post" action="/elimina_task" style="display:inline;">
+                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
+                                <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{ render_tasks(tasks, task.id, level+1) }}
+                    {% endfor %}
+                {% endmacro %}
+
                 <table class="table-tasks">
                     <thead>
                         <tr>
+                            <th></th>
                             <th>Task</th>
+                            <th>Priority</th>
                             <th>Assignee</th>
                             <th>Due Date</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for task in tasks %}
-                        <tr>
-                            <td>
-                                {{ task.titolo }}
-                                <span class="task-status">({{ task.stato }})</span>
-                                {% if task.descrizione %}
-                                    <br><span class="task-description">{{ task.descrizione }}</span>
-                                {% endif %}
-                                {% if allegati_per_task[task.id] and allegati_per_task[task.id]|length > 0 %}
-                                    <div class="task-attachments" style="margin-top:0.5em;">
-                                        <i class="fas fa-paperclip" style="font-size:0.95em;opacity:0.66;"></i>
-                                        {% for allegato in allegati_per_task[task.id] %}
-                                            <a href="{{ allegato.filepath }}" download style="margin-right:0.5em;">
-                                                {{ allegato.filename }}
-                                            </a>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if task.assegnato_a %}
-                                    {% for membro in membri_progetto %}
-                                        {% if membro.id == task.assegnato_a %}
-                                            {{ membro.nome }}
-                                        {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    Nessuno
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if task.scadenza %}
-                                    {{ task.scadenza }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
-                                    <i class="fas fa-pen"></i>
-                                </a>
-                                <form method="post" action="/elimina_task" style="display:inline;">
-                                    <input type="hidden" name="task_id" value="{{ task.id }}">
-                                    <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
-                                    <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4">Nessun task trovato</td>
-                        </tr>
-                        {% endfor %}
+                        {{ render_tasks(tasks) }}
                     </tbody>
                 </table>
             </div>
@@ -144,6 +169,19 @@ document.getElementById('allegato').addEventListener('change', function () {
     const fileName = this.files[0] ? this.files[0].name : 'No file selected';
     document.getElementById('file-name').textContent = fileName;
 });
-</script>
 
+function toggleComplete(checkbox, taskId, progettoId) {
+    fetch('/task/' + taskId + '/toggle_complete', {
+        method: 'POST', 
+        credentials: 'same-origin'
+    })
+    .then(() => { 
+        window.location.reload(); 
+    })
+    .catch(err => {
+        console.error('Errore:', err);
+        checkbox.checked = !checkbox.checked;
+    });
+}
+</script>
 </html>
