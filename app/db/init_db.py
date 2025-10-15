@@ -26,7 +26,7 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             progetto_id INTEGER,
             nome TEXT NOT NULL,
-            permessi_json TEXT NOT NULL, -- es: {"crea_task": true, ...}
+            permessi_json TEXT NOT NULL,
             FOREIGN KEY (progetto_id) REFERENCES progetti(id)
         );
     ''')
@@ -37,7 +37,7 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             owner_id INTEGER NOT NULL,
-            capo_progetto_id INTEGER NOT NULL, -- modificabile
+            capo_progetto_id INTEGER NOT NULL,
             FOREIGN KEY (owner_id) REFERENCES utenti(id),
             FOREIGN KEY (capo_progetto_id) REFERENCES utenti(id)
         );
@@ -48,7 +48,7 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS progetti_utenti (
             progetto_id INTEGER,
             utente_id INTEGER,
-            ruolo_id INTEGER, -- id della tabella ruoli
+            ruolo_id INTEGER,
             PRIMARY KEY (progetto_id, utente_id),
             FOREIGN KEY (progetto_id) REFERENCES progetti(id),
             FOREIGN KEY (utente_id) REFERENCES utenti(id),
@@ -62,7 +62,7 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             utente_id INTEGER NOT NULL,
             progetto_id INTEGER NOT NULL,
-            stato TEXT NOT NULL, -- pending, accepted, rejected
+            stato TEXT NOT NULL,
             data_request TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (utente_id) REFERENCES utenti(id),
             FOREIGN KEY (progetto_id) REFERENCES progetti(id)
@@ -82,8 +82,8 @@ def create_tables():
             assegnato_a INTEGER,
             scadenza TEXT,
             data_creazione TEXT DEFAULT CURRENT_TIMESTAMP,
-            priority INTEGER DEFAULT 1,     -- livello priorità (1=bassa, 2=media, 3=alta)
-            position INTEGER DEFAULT 0,     -- ordinamento drag&drop (0=alto, in ordine crescente)
+            priority INTEGER DEFAULT 1,
+            position INTEGER DEFAULT 0,
             FOREIGN KEY (progetto_id) REFERENCES progetti(id),
             FOREIGN KEY (parent_id) REFERENCES tasks(id),
             FOREIGN KEY (autore_id) REFERENCES utenti(id),
@@ -101,6 +101,20 @@ def create_tables():
             uploaded_by INTEGER,
             data_upload TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (task_id) REFERENCES tasks(id)
+        );
+    ''')
+
+    # CONFIGURAZIONE EMAIL SMTP
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS configurazione_email (
+            id INTEGER PRIMARY KEY,
+            smtp_host TEXT NOT NULL,
+            smtp_port INTEGER NOT NULL,
+            smtp_username TEXT NOT NULL,
+            smtp_password TEXT NOT NULL,
+            sender_email TEXT NOT NULL,
+            use_tls INTEGER DEFAULT 1,
+            use_ssl INTEGER DEFAULT 0
         );
     ''')
 

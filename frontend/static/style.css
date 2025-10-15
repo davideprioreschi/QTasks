@@ -1287,3 +1287,37 @@ textarea {
     color: #4a5568;
     font-style: italic;
 }
+
+.notif-badge {
+  display:inline-block;
+  position:absolute;
+  top: -6px;
+  right: -8px;
+  background: #e53e3e;
+  color: white;
+  min-width: 18px;
+  border-radius: 99px;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: bold;
+}
+.notifiche-popup {
+  display: none;
+}
+.notifiche-popup.active,
+.notifiche-popup.d-block {
+  display: block !important;
+}
+.notifica-unread {
+  background: #e8fcfc !important;
+  font-weight: bold;
+}
+.notifica-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.97em;
+}
+
+.notifica-unread {
+  background: #e8fcfc;
+}
