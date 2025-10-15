@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica commento</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div style="max-width:440px;margin:55px auto;">
+        <h2>Modifica commento</h2>
+        <form method="post" action="/commenti/{{ comment_id }}/modifica">
+            <textarea name="testo" rows="3" required style="width:99%;">{{ testo }}</textarea>
+            <div style="margin-top:9px;">
+                <button type="submit">Salva</button>
+                <a href="/task/{{ task_id }}" class="btn">Annulla</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

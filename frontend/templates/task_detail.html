@@ -28,6 +28,9 @@
     .comment-author { color: #308; font-weight:600;}
     .comment-date { color: #888; font-size: .98em;}
     .comment-thread-form {display:inline-block; margin-left:4px;}
+    .comments-thread .btn-link {color:#3772eb;font-size:.94em;margin-left:1em;}
+    .comments-thread .btn-link:hover {text-decoration:underline;}
+    .comments-block input[type="text"]:focus {border-color: #3772eb;outline:none;}
     </style>
 </head>
 <body>
@@ -98,10 +101,10 @@
                             {{ c.testo }}
                             <span class="comment-date"> ({{ c.data }})</span>
                             <span class="comment-actions">
-                                {% if c.autore_id == user_id %}
+                                {% if c.autore_id|string == user_id|string %}
                                     <a href="/commenti/{{ c.id }}/modifica" class="btn-link">Modifica</a>
                                 {% endif %}
-                                {% if (c.autore_id == user_id) or is_capo %}
+                                {% if (c.autore_id|string == user_id|string) or is_capo %}
                                     <form method="post" action="/commenti/{{ c.id }}/elimina" class="comment-thread-form" style="display:inline;">
                                         <button type="submit" onclick="return confirm('Eliminare commento e thread?')">Elimina</button>
                                     </form>

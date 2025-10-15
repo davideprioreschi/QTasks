@@ -118,6 +118,26 @@ async def commenta_task(
     conn.close()
     return RedirectResponse(f"/task/{task_id}", status_code=302)
 
+@app.get("/commenti/{comment_id}/modifica", response_class=HTMLResponse)
+async def form_modifica_commento(request: Request, comment_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT testo, autore_id, task_id FROM commenti_task WHERE id=?", (comment_id,))
+    row = c.fetchone()
+    if not row or str(row[1]) != str(user_id):
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    testo, _, task_id = row
+    conn.close()
+    return templates.TemplateResponse("modifica_commento.html", {
+        "request": request, 
+        "comment_id": comment_id, 
+        "testo": testo, 
+        "task_id": task_id
+    })
+
+
 @app.post("/commenti/{comment_id}/modifica")
 async def modifica_commento(
     comment_id: int,
@@ -138,6 +158,8 @@ async def modifica_commento(
     return RedirectResponse(f"/task/{r[1]}", status_code=302)
 
 
+
+
 @app.post("/commenti/{comment_id}/elimina")
 async def elimina_commento(
     comment_id: int,
@@ -153,39 +175,34 @@ async def elimina_commento(
         return RedirectResponse("/", status_code=302)
     autore_id, task_id = r
 
-    # Prendi progetto_id e capo_progetto_id
+    # Prendi progetto, capo e owner
     c.execute("""
-        SELECT t.progetto_id, p.capo_progetto_id, p.owner_id 
-        FROM tasks t
-        JOIN progetti p ON t.progetto_id = p.id
-        WHERE t.id=(
-            SELECT task_id FROM commenti_task WHERE id=?
-        )
-    """, (comment_id,))
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return RedirectResponse("/", status_code=302)
-    progetto_id, capo_id, owner_id = row
-
-    # Verifica permesso
+        SELECT p.capo_progetto_id, p.owner_id
+        FROM tasks t JOIN progetti p ON t.progetto_id = p.id
+        WHERE t.id=?
+    """, (task_id,))
+    ruoli = c.fetchone()
     is_author = str(user_id) == str(autore_id)
-    is_capo = str(user_id) == str(capo_id) or str(user_id) == str(owner_id)
+    is_capo = False
+    if ruoli and user_id is not None:
+        is_capo = (str(user_id) == str(ruoli[0]) or str(user_id) == str(ruoli[1]))
+
     if not (is_author or is_capo):
         conn.close()
         return RedirectResponse("/", status_code=302)
 
-    # Elimina commento e tutti i figli ricorsivi
-    def elimina_tree(cid):
+    # Elimina il commento + thread figli
+    def elimina_thread(cid):
         c.execute("SELECT id FROM commenti_task WHERE parent_id=?", (cid,))
         for row in c.fetchall():
-            elimina_tree(row[0])
+            elimina_thread(row[0])
         c.execute("DELETE FROM commenti_task WHERE id=?", (cid,))
+    elimina_thread(comment_id)
 
-    elimina_tree(comment_id)
     conn.commit()
     conn.close()
     return RedirectResponse(f"/task/{task_id}", status_code=302)
+
 
 
 
