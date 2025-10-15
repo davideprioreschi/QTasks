@@ -11,7 +11,6 @@
         .priority-medium { color: #e9c02f; font-weight: bold; }
         .priority-high { color: #d43e3e; font-weight: bold; }
         .priority-star { margin-right: 2px;}
-        .subtask { }
         .subtask-1 { background: #f8fafc; border-left: 4px solid #acd8f2; }
         .subtask-2 { background: #e8f7ff; border-left: 4px solid #6bd0fe; }
         .subtask-3 { background: #f6eaff; border-left: 4px solid #ba8af2; }
@@ -80,69 +79,65 @@
                 <h2 class="section-title">Task del progetto</h2>
                 
                 {% macro render_tasks(tasks, parent_id=None, level=0) %}
-                    {% set level_mod = level % 6 %}
-                    {% for task in tasks if task.parent_id == parent_id %}
-                    <tr class="{% if task.stato == 'completed' %}task-completed{% endif %}">
-                        <td>
-                            <input type="checkbox"
-                                onchange="toggleComplete(this, '{{ task.id }}', '{{ progetto_id }}')"
-                                {% if task.stato == 'completed' %}checked{% endif %}
-                                title="Completa/spunta">
-                        </td>
-                        <td class="subtask subtask-{{ level_mod }}" style="padding-left: {{ level * 28 }}px;">
-                            {{ task.titolo }}
-                            <span class="task-status">({{task.stato}})</span>
-                            {% if task.descrizione %}
-                                <br><span class="task-description">{{ task.descrizione }}</span>
-                            {% endif %}
-                            {% if allegati_per_task[task.id] and allegati_per_task[task.id]|length > 0 %}
-                                <div class="task-attachments" style="margin-top:0.5em;">
-                                    <i class="fas fa-paperclip" style="font-size:0.95em;opacity:0.66;"></i>
-                                    {% for allegato in allegati_per_task[task.id] %}
-                                        <a href="{{ allegato.filepath }}" download style="margin-right:0.5em;">
-                                            {{ allegato.filename }}
-                                        </a>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if task.priority == 3 %}
-                                <span class="priority-high">{% for i in range(0,3) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
-                            {% elif task.priority == 2 %}
-                                <span class="priority-medium">{% for i in range(0,2) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
-                            {% else %}
-                                <span class="priority-low"><i class="fas fa-star priority-star"></i></span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if task.assegnato_a %}
-                                {% for membro in membri_progetto %}
-                                    {% if membro.id == task.assegnato_a %}
-                                        {{ membro.nome }}
+                    {% set children = tasks | selectattr('parent_id', 'equalto', parent_id) | list %}
+                    {% if children | length == 0 and level == 0 %}
+                        <tr>
+                            <td colspan="6" style="text-align:center; opacity:0.7; padding: 1em;">
+                                Nessun task presente nel progetto
+                            </td>
+                        </tr>
+                    {% else %}
+                        {% set level_mod = level % 6 %}
+                        {% for task in children %}
+                            <tr class="{% if task.stato == 'completed' %}task-completed{% endif %}">
+                                <td>
+                                    <input type="checkbox"
+                                        onchange="toggleComplete(this, '{{ task.id }}', '{{ progetto_id }}')"
+                                        {% if task.stato == 'completed' %}checked{% endif %}>
+                                </td>
+                                <td class="subtask subtask-{{ level_mod }}" style="padding-left: '{{ level * 28 }}px';">
+                                    {{ task.titolo }}
+                                    <span class="task-status">({{ task.stato }})</span>
+                                </td>
+                                <td>
+                                    {% if task.priority == 3 %}
+                                        <span class="priority-high">{% for i in range(0,3) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+                                    {% elif task.priority == 2 %}
+                                        <span class="priority-medium">{% for i in range(0,2) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+                                    {% else %}
+                                        <span class="priority-low"><i class="fas fa-star priority-star"></i></span>
                                     {% endif %}
-                                {% endfor %}
-                            {% else %}
-                                Nessuno
-                            {% endif %}
-                        </td>
-                        <td>{% if task.scadenza %}{{ task.scadenza }}{% endif %}</td>
-                        <td>
-                            <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
-                                <i class="fas fa-pen"></i>
-                            </a>
-                            <form method="post" action="/elimina_task" style="display:inline;">
-                                <input type="hidden" name="task_id" value="{{ task.id }}">
-                                <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
-                                <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {{ render_tasks(tasks, task.id, level+1) }}
-                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if task.assegnato_a %}
+                                        {% for membro in membri_progetto %}
+                                            {% if membro.id == task.assegnato_a %}
+                                                {{ membro.nome }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Nessuno
+                                    {% endif %}
+                                </td>
+                                <td>{% if task.scadenza %}{{ task.scadenza }}{% endif %}</td>
+                                <td>
+                                    <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <form method="post" action="/elimina_task" style="display:inline;">
+                                        <input type="hidden" name="task_id" value="{{ task.id }}">
+                                        <input type="hidden" name="progetto_id" value="{{ progetto_id }}">
+                                        <button type="submit" class="icon-delete" title="Elimina" onclick="return confirm('Sei sicuro di voler eliminare questo task e tutti i suoi subtasks?');">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{ render_tasks(tasks, task.id, level+1) }}
+                        {% endfor %}
+                    {% endif %}
                 {% endmacro %}
+
 
                 <table class="table-tasks">
                     <thead>
