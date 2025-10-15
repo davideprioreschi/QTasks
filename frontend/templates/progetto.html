@@ -82,7 +82,7 @@
                     {% set children = tasks | selectattr('parent_id', 'equalto', parent_id) | list %}
                     {% if children | length == 0 and level == 0 %}
                         <tr>
-                            <td colspan="6" style="text-align:center; opacity:0.7; padding: 1em;">
+                            <td colspan="8" style="text-align:center; opacity:0.7; padding: 1em;">
                                 Nessun task presente nel progetto
                             </td>
                         </tr>
@@ -95,7 +95,7 @@
                                         onchange="toggleComplete(this, '{{ task.id }}', '{{ progetto_id }}')"
                                         {% if task.stato == 'completed' %}checked{% endif %}>
                                 </td>
-                                <td class="subtask subtask-{{ level_mod }}" style="padding-left: '{{ level * 28 }}px';">
+                                <td class="subtask subtask-{{ level_mod }}" style="padding-left: '{{ level * 28 }}'px;">
                                     {{ task.titolo }}
                                     <span class="task-status">({{ task.stato }})</span>
                                 </td>
@@ -121,6 +121,31 @@
                                 </td>
                                 <td>{% if task.scadenza %}{{ task.scadenza }}{% endif %}</td>
                                 <td>
+                                    {% if task.descrizione %}
+                                        <span title="{{ task.descrizione }}">
+                                            {{ task.descrizione[:50] }}{% if task.descrizione|length > 50 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <em style="opacity:0.6;">Nessuna descrizione</em>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set allegati = allegati_per_task.get(task.id, []) %}
+                                    {% if allegati %}
+                                        {% for att in allegati %}
+                                            <a href="{{ att.filepath }}" target="_blank" class="btn-link" title="{{ att.filename }}">
+                                                <i class="fas fa-paperclip"></i>
+                                            </a>
+                                        {% endfor %}
+                                    {% else %}
+                                        <em style="opacity:0.6;">-</em>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <a href="/task/{{ task.id }}" class="icon-view" title="Visualizza dettagli">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
                                     <a href="/modifica_task/{{ task.id }}?progetto_id={{ progetto_id }}" class="icon-edit" title="Modifica">
                                         <i class="fas fa-pen"></i>
                                     </a>
@@ -133,10 +158,12 @@
                                     </form>
                                 </td>
                             </tr>
+
                             {{ render_tasks(tasks, task.id, level+1) }}
                         {% endfor %}
                     {% endif %}
                 {% endmacro %}
+
 
 
                 <table class="table-tasks">
@@ -147,6 +174,8 @@
                             <th>Priority</th>
                             <th>Assignee</th>
                             <th>Due Date</th>
+                            <th>Description</th>
+                            <th>Attachment</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -154,6 +183,7 @@
                         {{ render_tasks(tasks) }}
                     </tbody>
                 </table>
+
             </div>
         </div>
     </div>

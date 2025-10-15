@@ -97,6 +97,97 @@ async def home(request: Request, user_id: str = Cookie(default=None)):
         "num_notifiche_admin": num_notifiche_admin
     })
 
+@app.post("/task/{task_id}/commenta")
+async def commenta_task(
+    task_id: int,
+    testo: str = Form(...),
+    parent_id: int = Form(None),
+    user_id: str = Cookie(default=None)
+):
+    if not user_id:
+        return RedirectResponse("/login", status_code=302)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # parent_id dentro la INSERT
+    c.execute(
+        "INSERT INTO commenti_task (task_id, autore_id, testo, parent_id) VALUES (?, ?, ?, ?)",
+        (task_id, user_id, testo, parent_id)
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/task/{task_id}", status_code=302)
+
+@app.post("/commenti/{comment_id}/modifica")
+async def modifica_commento(
+    comment_id: int,
+    testo: str = Form(...),
+    user_id: str = Cookie(default=None)
+):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT autore_id, task_id FROM commenti_task WHERE id=?", (comment_id,))
+    r = c.fetchone()
+    if not r or str(r[0]) != str(user_id):
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    c.execute("UPDATE commenti_task SET testo=? WHERE id=?", (testo, comment_id))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/task/{r[1]}", status_code=302)
+
+
+@app.post("/commenti/{comment_id}/elimina")
+async def elimina_commento(
+    comment_id: int,
+    user_id: str = Cookie(default=None)
+):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT autore_id, task_id FROM commenti_task WHERE id=?", (comment_id,))
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    autore_id, task_id = r
+
+    # Prendi progetto_id e capo_progetto_id
+    c.execute("""
+        SELECT t.progetto_id, p.capo_progetto_id, p.owner_id 
+        FROM tasks t
+        JOIN progetti p ON t.progetto_id = p.id
+        WHERE t.id=(
+            SELECT task_id FROM commenti_task WHERE id=?
+        )
+    """, (comment_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    progetto_id, capo_id, owner_id = row
+
+    # Verifica permesso
+    is_author = str(user_id) == str(autore_id)
+    is_capo = str(user_id) == str(capo_id) or str(user_id) == str(owner_id)
+    if not (is_author or is_capo):
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+
+    # Elimina commento e tutti i figli ricorsivi
+    def elimina_tree(cid):
+        c.execute("SELECT id FROM commenti_task WHERE parent_id=?", (cid,))
+        for row in c.fetchall():
+            elimina_tree(row[0])
+        c.execute("DELETE FROM commenti_task WHERE id=?", (cid,))
+
+    elimina_tree(comment_id)
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/task/{task_id}", status_code=302)
+
+
 
 def invia_notifica_admin(oggetto, messaggio):
     conn = sqlite3.connect(get_db_path())
@@ -588,6 +679,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
         ORDER BY (stato='completed'), priority DESC, position ASC, id ASC
     """, (progetto_id,))
     tasks = []
+    task_ids = []
     for r in c.fetchall():
         tasks.append({
             "id": r[0],
@@ -600,6 +692,7 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
             "priority": r[7],
             "position": r[8]
         })
+        task_ids.append(r[0])
 
     # Lista membri del progetto
     c.execute("""
@@ -620,6 +713,25 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
         allegati = [{"filename": a[0], "filepath": a[1]} for a in c.fetchall()]
         allegati_per_task[t["id"]] = allegati
 
+    # Commenti per ogni task
+    commenti_per_task = {}
+    if task_ids:
+        c.execute("""
+            SELECT ct.id, ct.task_id, ct.autore_id, ct.testo, ct.data_creazione, u.nome
+            FROM commenti_task ct
+            LEFT JOIN utenti u ON ct.autore_id = u.id
+            WHERE ct.task_id IN ({})
+            ORDER BY ct.data_creazione ASC
+        """.format(",".join("?" * len(task_ids))), tuple(task_ids))
+        for r in c.fetchall():
+            commenti_per_task.setdefault(r[1], []).append({
+                "id": r[0],
+                "autore_id": r[2],
+                "testo": r[3],
+                "data": r[4],
+                "autore_nome": r[5] or "anonimo"
+            })
+
     conn.close()
 
     return templates.TemplateResponse("progetto.html", {
@@ -628,8 +740,94 @@ async def visualizza_progetto(request: Request, progetto_id: int, user_id: str =
         "progetto_id": progetto_id,
         "tasks": tasks,
         "membri_progetto": membri_progetto,
-        "allegati_per_task": allegati_per_task
+        "allegati_per_task": allegati_per_task,
+        "commenti_per_task": commenti_per_task
     })
+
+
+@app.get("/task/{task_id}", response_class=HTMLResponse)
+async def visualizza_task(request: Request, task_id: int, user_id: str = Cookie(default=None)):
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # Prendi info task con join assegnato
+    c.execute("""
+        SELECT t.id, t.titolo, t.descrizione, t.progetto_id, t.stato, t.assegnato_a, t.scadenza, t.priority,
+               u.nome
+        FROM tasks t
+        LEFT JOIN utenti u ON t.assegnato_a = u.id
+        WHERE t.id = ?
+    """, (task_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+
+    task_dict = {
+        "id": row[0],
+        "titolo": row[1],
+        "descrizione": row[2],
+        "progetto_id": row[3],
+        "stato": row[4],
+        "assegnato_a": row[5],
+        "scadenza": row[6],
+        "priority": row[7],
+    }
+    assegnato_nome = row[8]
+
+    # Allegati task
+    c.execute("SELECT filename, filepath FROM allegati WHERE task_id=?", (task_id,))
+    allegati = [{"filename": r[0], "filepath": r[1]} for r in c.fetchall()]
+
+    # Subtasks
+    c.execute("SELECT id, titolo FROM tasks WHERE parent_id=?", (task_id,))
+    subtasks = [{"id": r[0], "titolo": r[1]} for r in c.fetchall()]
+
+    # Threaded Commenti (annidati)
+    c.execute("""
+        SELECT ct.id, ct.autore_id, ct.testo, ct.parent_id, ct.data_creazione, u.nome
+        FROM commenti_task ct
+        LEFT JOIN utenti u ON ct.autore_id = u.id
+        WHERE ct.task_id = ?
+        ORDER BY ct.data_creazione ASC
+    """, (task_id,))
+    all_comments = [
+        {"id": r[0], "autore_id": r[1], "testo": r[2], "parent_id": r[3],
+         "data": r[4], "autore_nome": r[5] or "anonimo"}
+        for r in c.fetchall()
+    ]
+    def build_tree(comments, parent=None):
+        return [
+            {**c, "children": build_tree(comments, c["id"])}
+            for c in comments if c["parent_id"] == parent
+        ]
+    threaded_comments = build_tree(all_comments)
+
+    # Prendi owner/capo per permessi pulsanti
+    c.execute("""
+        SELECT p.capo_progetto_id, p.owner_id
+        FROM tasks t JOIN progetti p ON t.progetto_id = p.id
+        WHERE t.id = ?
+    """, (task_id,))
+    permbase = c.fetchone()
+    is_capo = False
+    if permbase and user_id is not None:
+        is_capo = (str(user_id) == str(permbase[0]) or str(user_id) == str(permbase[1]))
+
+    conn.close()
+    return templates.TemplateResponse("task_detail.html", {
+        "request": request,
+        "task": task_dict,
+        "assegnato_nome": assegnato_nome,
+        "allegati": allegati,
+        "subtasks": subtasks,
+        "threaded_comments": threaded_comments,
+        "user_id": user_id,
+        "is_capo": is_capo,
+        "progetto_id": task_dict["progetto_id"]
+    })
+
+
 
 
 

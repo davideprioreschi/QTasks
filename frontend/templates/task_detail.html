@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Task: {{ task.titolo }} - QTasks</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+    .task-detail-card { background: #f8fafc; border-radius:12px; max-width:610px; margin:44px auto 22px; box-shadow:0 3px 30px #183e8577; padding: 2.5em 2.2em; }
+    .task-detail-card h1 { font-size: 2em; margin-bottom: 16px; color: #0c2452; }
+    .meta-row { margin-bottom: .5em; color: #2d3b66; }
+    .meta-label { font-weight:600; margin-right:.5em;}
+    .btn-back { color: #0c2452; background: #dde3f5; border-radius: 6px; padding: 7px 14px; text-decoration:none; font-weight:500; }
+    .btn-back:hover { background: #c4d5ec; }
+    .subtasks-section { margin: 2.5em 0 2em 0; }
+    .section-title { margin-bottom:6px;color: #24499b;font-size:1.2em;}
+    .subtasks-list { margin:0 0 15px 0; padding:0; list-style:disc inside; }
+    .attachments-list { list-style: none; padding-left: 0; }
+    .attachments-list li { margin-bottom: 5px; }
+    .comments-block { background: #fff; border-radius: 7px; padding: 20px 18px; margin-top: 22px; }
+    .comments-thread, .comments-thread ul { list-style: none; margin-left: 0; padding-left: 18px; }
+    .comments-thread li { margin-bottom: .8em; border-left:2px solid #d2d8ee; padding-left:9px;}
+    .comment-actions { font-size:.94em; margin-left:8px;}
+    .comments-block form {margin-top: 9px; display:flex; gap:9px;}
+    .comments-block input[type='text'] { flex:1; padding:7px; border-radius:6px; border:1px solid #b3cced;}
+    .comments-block button {background:#0c2452;color:white;border:none;border-radius:6px;padding:7px 15px;font-weight:500;}
+    .comments-block button:hover {background:#3772eb;}
+    .comment-author { color: #308; font-weight:600;}
+    .comment-date { color: #888; font-size: .98em;}
+    .comment-thread-form {display:inline-block; margin-left:4px;}
+    </style>
+</head>
+<body>
+    <div style="max-width:620px;margin:40px auto 0;">
+        <a href="/progetto/{{ progetto_id }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Torna al progetto
+        </a>
+    </div>
+    <div class="task-detail-card">
+        <h1>{{ task.titolo }}</h1>
+        <div class="meta-row"><span class="meta-label">Descrizione:</span> {{ task.descrizione or "<span style='color:#abb'>nessuna descrizione</span>" | safe }}</div>
+        <div class="meta-row"><span class="meta-label">Stato:</span> <b>{{ task.stato }}</b></div>
+        <div class="meta-row"><span class="meta-label">Assegnato a:</span>
+            {% if assegnato_nome %}
+                {{ assegnato_nome }}
+            {% else %}
+                Nessuno
+            {% endif %}
+        </div>
+        <div class="meta-row"><span class="meta-label">Scadenza:</span> {{ task.scadenza or "Nessuna" }}</div>
+        <div class="meta-row">
+            <span class="meta-label">Priorità:</span>
+            {% if task.priority == 3 %}
+                <span class="priority-high">{% for i in range(0,3) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+            {% elif task.priority == 2 %}
+                <span class="priority-medium">{% for i in range(0,2) %}<i class="fas fa-star priority-star"></i>{% endfor %}</span>
+            {% else %}
+                <span class="priority-low"><i class="fas fa-star priority-star"></i></span>
+            {% endif %}
+        </div>
+        <div class="meta-row">
+            <span class="meta-label">Allegati:</span>
+            {% if allegati %}
+                <ul class="attachments-list">
+                    {% for att in allegati %}
+                        <li>
+                            <a href="{{ att.filepath }}" target="_blank">
+                                <i class="fas fa-paperclip"></i> {{ att.filename }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <span style="color:#9baacf;">Nessun allegato</span>
+            {% endif %}
+        </div>
+        <div class="subtasks-section">
+            <div class="section-title"><i class="fas fa-sitemap"></i> Sub-task</div>
+            {% if subtasks %}
+                <ul class="subtasks-list">
+                    {% for st in subtasks %}
+                        <li>
+                            <a href="/task/{{ st.id }}">{{ st.titolo }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <span style="color:#757b94;">Nessuna subtask associata</span>
+            {% endif %}
+        </div>
+        <div class="comments-block">
+            <div class="section-title"><i class="fas fa-comments"></i> Commenti</div>
+            {% macro render_comments(comments) %}
+                <ul class="comments-thread">
+                    {% for c in comments %}
+                        <li>
+                            <span class="comment-author">{{ c.autore_nome }}</span>:
+                            {{ c.testo }}
+                            <span class="comment-date"> ({{ c.data }})</span>
+                            <span class="comment-actions">
+                                {% if c.autore_id == user_id %}
+                                    <a href="/commenti/{{ c.id }}/modifica" class="btn-link">Modifica</a>
+                                {% endif %}
+                                {% if (c.autore_id == user_id) or is_capo %}
+                                    <form method="post" action="/commenti/{{ c.id }}/elimina" class="comment-thread-form" style="display:inline;">
+                                        <button type="submit" onclick="return confirm('Eliminare commento e thread?')">Elimina</button>
+                                    </form>
+                                {% endif %}
+                            </span>
+                            <!-- Risposta -->
+                            <form method="post" action="/task/{{ task.id }}/commenta" class="comment-thread-form">
+                                <input type="hidden" name="parent_id" value="{{ c.id }}" />
+                                <input name="testo" type="text" placeholder="Rispondi..." required style="width:160px;" />
+                                <button type="submit">Rispondi</button>
+                            </form>
+                            {% if c.children %}{{ render_comments(c.children) }}{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endmacro %}
+            {% if threaded_comments %}
+                {{ render_comments(threaded_comments) }}
+            {% else %}
+                <span style="color:#a5a9bd;">Nessun commento ancora. Lascia il primo!</span>
+            {% endif %}
+            <!-- Nuovo root commento -->
+            <form method="post" action="/task/{{ task.id }}/commenta" style="margin-top:15px;">
+                <input name="testo" type="text" placeholder="Aggiungi commento..." required>
+                <button type="submit">Invia</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

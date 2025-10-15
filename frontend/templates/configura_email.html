@@ -3,18 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <title>Configura invio mail - QTasks</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Configura invio email</h1>
-    <form method="post" action="/configura_email">
-        <label>SMTP Host: <input type="text" name="smtp_host" required></label><br>
-        <label>SMTP Port: <input type="number" name="smtp_port" required></label><br>
-        <label>SMTP Username: <input type="text" name="smtp_username" required></label><br>
-        <label>SMTP Password: <input type="password" name="smtp_password" required></label><br>
-        <label>Email mittente: <input type="email" name="sender_email" required></label><br>
-        <label>Usa TLS: <input type="checkbox" name="use_tls" value="1" checked></label><br>
-        <label>Usa SSL: <input type="checkbox" name="use_ssl" value="1"></label><br>
-        <button type="submit">Salva configurazione</button>
-    </form>
+    <div class="email-config-container">
+      <h1>Configura invio email</h1>
+      <form method="post" action="/configura_email">
+          <label>SMTP Host: <input type="text" name="smtp_host" required></label>
+          <label>SMTP Port: <input type="number" name="smtp_port" required></label>
+          <label>SMTP Username: <input type="text" name="smtp_username" required></label>
+          <label>SMTP Password: <input type="password" name="smtp_password" required></label>
+          <label>Email mittente: <input type="email" name="sender_email" required></label>
+          <label>
+            <input type="checkbox" name="use_tls" value="1" checked> Usa TLS
+          </label>
+          <label>
+            <input type="checkbox" name="use_ssl" value="1"> Usa SSL
+          </label>
+          <button type="submit">Salva configurazione</button>
+      </form>
+    </div>
 </body>
 </html>

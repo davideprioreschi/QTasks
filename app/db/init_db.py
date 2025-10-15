@@ -104,6 +104,21 @@ def create_tables():
         );
     ''')
 
+    # Commenti su task (thread e sottothread - parent_id)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS commenti_task (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            autore_id INTEGER,
+            testo TEXT NOT NULL,
+            parent_id INTEGER,
+            data_creazione TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tasks(id),
+            FOREIGN KEY (autore_id) REFERENCES utenti(id),
+            FOREIGN KEY (parent_id) REFERENCES commenti_task(id)
+        );
+    ''')
+
     # CONFIGURAZIONE EMAIL SMTP
     c.execute('''
         CREATE TABLE IF NOT EXISTS configurazione_email (
@@ -115,6 +130,17 @@ def create_tables():
             sender_email TEXT NOT NULL,
             use_tls INTEGER DEFAULT 1,
             use_ssl INTEGER DEFAULT 0
+        );
+    ''')
+
+    # Notifiche admin
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS notifiche_admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titolo TEXT NOT NULL,
+            testo TEXT NOT NULL,
+            letto INTEGER DEFAULT 0,
+            data_creazione TEXT DEFAULT CURRENT_TIMESTAMP
         );
     ''')
 

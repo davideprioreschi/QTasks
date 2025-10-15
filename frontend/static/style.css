@@ -1321,3 +1321,69 @@ textarea {
 .notifica-unread {
   background: #e8fcfc;
 }
+
+td[colspan="6"] .comment-section {
+  font-size: 0.98em;
+}
+.comment-row ul {
+  margin-bottom: 4px;
+}
+
+.email-config-container {
+  max-width: 480px;
+  margin: 50px auto;
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 4px 32px #0c24521c;
+  padding: 30px 40px;
+}
+
+.email-config-container h1 {
+  text-align: center;
+  margin-bottom: 1.7em;
+  color: #0c2452;
+}
+
+.email-config-container label {
+  display: block;
+  margin-bottom: 1em;
+  color: #0c2452;
+  font-weight: 500;
+  font-size: 1.04em;
+}
+
+.email-config-container input[type="text"],
+.email-config-container input[type="number"],
+.email-config-container input[type="email"],
+.email-config-container input[type="password"] {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1px solid #e0e0ec;
+  background: #fff;
+  font-size: 1em;
+  margin-top: 4px;
+}
+
+.email-config-container input[type="checkbox"] {
+  margin-left: 4px;
+  margin-bottom: 0;
+}
+
+.email-config-container button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 10px;
+  background: #0c2452;
+  color: #fff;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 7px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.email-config-container button:hover {
+  background: #183e85;
+}
